@@ -92,6 +92,41 @@ inline std::vector<double> formants(int sections, const float* diameters, float 
     return spectralPeaks(mag, fs, 120.0, hiHz);
 }
 
+// the resonances the jet sees (whistle plan §7.1): a unit impulse injected
+// into the last section, the tube's output read there. the driving point at
+// the lips, where peak-picking the throat-end response finds every formant.
+inline std::vector<float> lipImpulseResponse(int sections, const float* diameters, float velumDiameter, int count,
+                                             const Tuning& tuning = Tuning()) {
+    Tube tube(sections);
+    tube.retune(tuning);
+    tube.setShape(diameters, velumDiameter);
+    tube.snap();
+    tube.reset();
+    tube.inject(tube.sections() - 1, 1.0f);
+    std::vector<float> out((size_t)count);
+    for (int i = 0; i < count; ++i) out[(size_t)i] = tube.step(0.0f);
+    return out;
+}
+
+// the lip response's peaks over the whistle band, 300 .. 6000 Hz
+inline std::vector<double> whistleModes(int sections, const float* diameters, float velumDiameter,
+                                        const Tuning& tuning = Tuning(), double fs = kDefaultFs) {
+    const std::vector<float> ir = lipImpulseResponse(sections, diameters, velumDiameter, 4096, tuning);
+    const std::vector<double> mag = magnitudeSpectrum(ir.data(), (int)ir.size(), 8192);
+    return spectralPeaks(mag, fs, 300.0, 6000.0);
+}
+
+// the strongest bin within +-width (a fraction) of hz, as a magnitude
+inline double peakNear(const std::vector<double>& mag, double fs, double hz, double width) {
+    const size_t fftSize = (mag.size() - 1) * 2;
+    const double binHz = fs / (double)fftSize;
+    size_t lo = (size_t)std::floor(hz * (1.0 - width) / binHz), hi = (size_t)std::ceil(hz * (1.0 + width) / binHz);
+    if (hi >= mag.size()) hi = mag.size() - 1;
+    double best = 0.0;
+    for (size_t i = lo; i <= hi; ++i) if (mag[i] > best) best = mag[i];
+    return best;
+}
+
 inline double rms(const float* x, int n) {
     double s = 0.0;
     for (int i = 0; i < n; ++i) s += (double)x[i] * x[i];

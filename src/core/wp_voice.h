@@ -1,4 +1,4 @@
-// wind_pipe — wp_voice.h  (plan §7)
+// wind_pipe — wp_voice.h  (plan §7; whistle plan §3, §4, §6)
 // the voice: the whole public surface. you move a mouth; the sound is the
 // consequence.
 //
@@ -9,7 +9,9 @@
 //      -> body: every channel approaches its target     -> eased pose
 //      -> anatomy: pose -> diameters + velum            -> areas -> reflections
 //      -> watchers: closures, releases, pressure        -> burst + noise gains
-//      -> 128 x { glottis + aspiration -> tube (+nose) + turbulence + bursts }
+//      -> airflow: folds, tract, lips in series         -> the jet's flow + transit
+//      -> 128 x { glottis + aspiration -> tube (+nose) + turbulence + bursts
+//                 + the jet at the lips, fed by the lips' own flow }
 //      -> halfband lowpass -> gain -> clamp
 //      -> state published for readback
 //
@@ -19,6 +21,15 @@
 // is the whole arbitration rule. (last in the caller's own order: a setter
 // called before sing() loses to the score's first events, one called after
 // wins, even when all of it lands in a single block.)
+//
+// whistle(midi, breath) is a convenience like noteOn: one call that writes a
+// whistle pose from the table (wp_vocab.h) through the same targets — folds
+// open, velum shut, tongue, pucker, a slot or none, breath — so the last
+// writer wins here too. a note outside the table's range folds into it by
+// octaves; a voice of another size looks its note up shifted by its size.
+// it leaves the folds open: a bare noteOn after it whispers, a score commit,
+// stop() or setGlottis(0) voices again. words and whistles are exclusive:
+// whistle() ends any words in flight.
 //
 // the tuning (wp_tuning.h) — who is singing — goes the same way, whole: set
 // between blocks, it lands at the top of the next one, ahead of that block's
@@ -32,6 +43,7 @@
 #include "wp_body.h"
 #include "wp_config.h"
 #include "wp_glottis.h"
+#include "wp_jet.h"
 #include "wp_noise.h"
 #include "wp_pitch.h"
 #include "wp_score.h"
@@ -54,6 +66,8 @@ struct BodyState {
     bool  closed = false;               // some source is shut
     bool  busy = false;                 // a score is playing
     uint8_t phoneme = ph::none;         // the score's current phoneme
+    float whistle = 0;                  // the jet's swing over its cap, 0..1: near 1 locked
+    float whistleHz = 0;                // the whistle's pitch; held while whistle is down
 };
 
 class Voice {
@@ -82,6 +96,8 @@ public:
     // conveniences
     void noteOn(float midi, float vel01);   // pitch + breath + vibrato onset
     void noteOff();                         // breath to 0
+    void whistle(float midi, float breath); // a whistle pose for this note from the table, and breath; ends any words in flight
+    void whistleRange(float& lo, float& hi) const;  // the notes whistle() reaches without folding
     // words (§9). false = bad phoneme or overflow, and nothing was disturbed.
     bool syllable(const char* phones);      // now, at the current note
     bool sing(const Syllable* syls, int n);
@@ -90,7 +106,7 @@ public:
     void stop();
     bool busy() const { return player_.busy(); }
     // readback
-    BodyState state() const { return state_; }      // eased pose, f0, voicing, hiss, closed, phoneme
+    BodyState state() const { return state_; }      // eased pose, f0, voicing, hiss, closed, phoneme, whistle
     int  diameters(float* out, int max) const;
     // the engine
     void render(float* out, int n);         // host and wrapper both call this
@@ -108,6 +124,7 @@ public:
     void  setHalfband(bool on) { useHalfband_ = on; }            // keep or drop by ear
     const Body& body() const { return body_; }                   // tests and tools
     const Tube& tube() const { return tube_; }
+    const Jet&  jet() const  { return jet_; }
 
 private:
     struct Table { uint32_t dirty = 0; float a[kChCount] = {}, b[kChCount] = {}; uint32_t seq[kChCount] = {}; };
@@ -125,6 +142,7 @@ private:
     Rng   rng_;
     Tube  tube_;
     Glottis glottis_;
+    Jet   jet_;
     Noise noise_;
     Body  body_;
     PitchAxis pitch_;
@@ -140,6 +158,7 @@ private:
     bool  useHalfband_ = true;
     float scoreBreath_ = kScoreBreath;      // the last level anyone asked for
     float midi_ = kDefaultMidi;             // caller side: the last note anyone asked for
+    float whistleShift_ = 0.0f;             // 12 log2(N / kDefaultSections): a note's table midi, less the note
 
     int   blockPos_ = 0;
     bool  silent_ = true;

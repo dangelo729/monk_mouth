@@ -60,6 +60,11 @@ Tuning clamped(const Tuning& in, float fs) {
     t.wobbleFastHz      = real(in.wobbleFastHz, d.wobbleFastHz);
     t.wobbleSlowCents   = real(in.wobbleSlowCents, d.wobbleSlowCents);
     t.wobbleFastCents   = real(in.wobbleFastCents, d.wobbleFastCents);
+
+    // below zero the jet's speed is the root of a negative pressure
+    t.breathPressure    = atLeast(in.breathPressure, 0.0f, d.breathPressure);
+    t.jetLength         = real(in.jetLength, d.jetLength);
+    t.jetGain           = real(in.jetGain, d.jetGain);
     return t;
 }
 

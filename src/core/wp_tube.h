@@ -38,6 +38,19 @@ public:
         L_[section] += 0.5f * amount;
     }
 
+    // half into R and minus half into L of one section: adds through-flow
+    // (R - L) and leaves the pressure (R + L). that is the wave pair a pressure
+    // difference across the section makes: the jet drive's dipole (whistle
+    // plan §3). inject() is the monopole, a volume source, which the open end
+    // shorts.
+    inline void injectFlow(int section, float amount) {
+        R_[section] += 0.5f * amount;
+        L_[section] -= 0.5f * amount;
+    }
+
+    // in area-weighted waves the difference is volume velocity, independent of area
+    float flow(int i) const { return R_[i] - L_[i]; }
+
     inline float step(float source);                      // one sample
 
 private:

@@ -18,7 +18,7 @@ namespace {
 // a Tuning is nothing but floats, so a test can walk its fields by index.
 constexpr int kFields = (int)(sizeof(Tuning) / sizeof(float));
 static_assert(sizeof(Tuning) == kFields * sizeof(float), "Tuning is floats and nothing else");
-static_assert(kFields == 32, "a new tunable: name it in kFieldNames below");
+static_assert(kFields == 35, "a new tunable: name it in kFieldNames below");
 
 const char* const kFieldNames[kFields] = {
     "glottisRest", "aspirationGain", "aspirationHz", "aspirationQ", "noiseVoicedFloor", "noiseVoicedPulse",
@@ -26,6 +26,7 @@ const char* const kFieldNames[kFields] = {
     "turbulenceGain", "fricationHz", "fricationQ", "voicedFrication", "burstGain", "burstHalfLife", "diction",
     "rateBreathUp", "rateBreathDown", "rateGlottis", "rateTenseness", "rateTongue", "rateLips", "rateVelum",
     "vibFadeRate", "wobbleSlowHz", "wobbleFastHz", "wobbleSlowCents", "wobbleFastCents",
+    "breathPressure", "jetLength", "jetGain",
 };
 
 float field(const Tuning& t, int i) {
@@ -64,6 +65,23 @@ std::vector<float> singLine(Voice& v) {
     v.noteOff();
     v.render(x.data() + line + note, tail);
     return x;
+}
+
+// a whistle at the hand-found pose (tests/test_jet.cpp): the jet's three
+// fields are heard here, and a sung line barely reaches them.
+std::vector<float> whistle(Voice& v) {
+    std::vector<float> x((size_t)(0.8f * kDefaultFs));
+    v.setGlottis(1.0f);
+    v.setTongue(0.9f, 0.6f);
+    v.setLips(0.3f);
+    v.setVelum(0.0f);
+    v.setBreath(0.8f);
+    v.render(x.data(), (int)x.size());
+    return x;
+}
+bool isJetField(int i) {
+    return !std::strcmp(kFieldNames[i], "breathPressure") || !std::strcmp(kFieldNames[i], "jetLength") ||
+           !std::strcmp(kFieldNames[i], "jetGain");
 }
 
 bool same(const std::vector<float>& a, const std::vector<float>& b) {
@@ -110,9 +128,10 @@ WP_TEST(tuning_retune_resets_nothing) {
 }
 
 // every field, moved, changes what comes out: no tunable is wired to nothing.
+// the jet's fields are asked of a whistle, the rest of a sung line.
 WP_TEST(tuning_every_field_is_heard) {
-    Voice ref(22, 5);
-    const std::vector<float> base = singLine(ref);
+    Voice ref(22, 5), refWhistle(22, 5);
+    const std::vector<float> base = singLine(ref), baseWhistle = whistle(refWhistle);
     const Tuning d;
     for (int i = 0; i < kFields; ++i) {
         Tuning t;
@@ -121,7 +140,8 @@ WP_TEST(tuning_every_field_is_heard) {
         Voice v(22, 5);
         v.setTuning(t);
         CHECK_MSG(field(v.tuning(), i) != was, "%s did not move", kFieldNames[i]);
-        CHECK_MSG(!same(base, singLine(v)), "%s changes nothing", kFieldNames[i]);
+        if (isJetField(i)) CHECK_MSG(!same(baseWhistle, whistle(v)), "%s changes nothing", kFieldNames[i]);
+        else CHECK_MSG(!same(base, singLine(v)), "%s changes nothing", kFieldNames[i]);
     }
 }
 
@@ -135,7 +155,7 @@ const Limit kLimits[] = {
     {"aspirationHz", 0.0f, kDefaultFs * 0.5f}, {"fricationHz", 0.0f, kDefaultFs * 0.5f},
     {"aspirationQ", 1e-6f, kOpen},             {"fricationQ", 1e-6f, kOpen},
     {"glottalReflection", -1.0f, 1.0f},        {"lipReflection", -1.0f, 1.0f},  {"damp", -1.0f, 1.0f},
-    {"burstHalfLife", 0.0f, kOpen},
+    {"burstHalfLife", 0.0f, kOpen},            {"breathPressure", 0.0f, kOpen},
 };
 const Limit* limitOf(int i) {
     for (const Limit& l : kLimits) if (!std::strcmp(l.name, kFieldNames[i])) return &l;
@@ -184,6 +204,8 @@ WP_TEST(tuning_survives_its_limits) {
     Tuning ringing;
     ringing.glottalReflection = kOpen; ringing.lipReflection = -kOpen; ringing.damp = kOpen;
     Tuning cases[] = {limitedAt(-kOpen), limitedAt(kOpen), ringing};
+    // the pipe's own limits: the jet's pressure is asked of the whistle below
+    for (Tuning& t : cases) t.breathPressure = Tuning().breathPressure;
     const char* const names[] = {"floor", "ceiling", "ringing"};
     for (int n : {22, 16, 26})
         for (int c = 0; c < 3; ++c) {
@@ -216,6 +238,51 @@ WP_TEST(tuning_survives_its_limits) {
                       "N=%d %s: did not settle, energy %.3g", n, names[c], v.tube().energy());
         }
 
+    // a whistle at the limits, the pipe's with them: at the floor the jet has
+    // no pressure; at the ceiling, 1e30 Pa, it is a full-scale square the
+    // output clamp holds, the tube's energy past any bound but finite. no
+    // ceiling on breathPressure is needed: every sample stays finite, and the
+    // voice sings again once it is handed the defaults.
+    const Tuning jetCases[] = {limitedAt(-kOpen), limitedAt(kOpen)};
+    for (int n : {22, 16, 26})
+        for (int c = 0; c < 2; ++c) {
+            Voice v(n, 3);
+            v.setTuning(jetCases[c]);
+            {   std::vector<float> x = singLine(v);                     // the line at the jet's limit too
+                bool lineFinite = std::isfinite(v.tube().energy());
+                for (float s : x) if (!std::isfinite(s) || std::fabs(s) > 1.0f) lineFinite = false;
+                CHECK_MSG(lineFinite, "N=%d %s: the line is not finite", n, names[c]); }
+            std::vector<float> buf(4410);
+            bool finite = true;
+            float peak = 0.0f;
+            v.setGlottis(1.0f);
+            v.setTongue(0.9f, 0.6f);
+            v.setLips(0.3f);
+            v.setVelum(0.0f);
+            for (int step = 0; step < 20; ++step) {                     // 2 s: soft, full, and past 1
+                v.setBreath(step < 7 ? 0.3f : step < 14 ? 1.0f : 3.0f);
+                v.render(buf.data(), (int)buf.size());
+                for (float x : buf) {
+                    if (!std::isfinite(x)) finite = false;
+                    if (std::fabs(x) > peak) peak = std::fabs(x);
+                }
+                if (!std::isfinite(v.tube().energy()) || !std::isfinite(v.state().whistle)) finite = false;
+            }
+            CHECK_MSG(finite, "N=%d %s whistle: not finite", n, names[c]);
+            CHECK_MSG(peak <= 1.0f, "N=%d %s whistle: peak %.3f", n, names[c], peak);
+
+            v.setTuning(Tuning());
+            v.stop();
+            for (int step = 0; step < 30; ++step) v.render(buf.data(), (int)buf.size());
+            CHECK_MSG(v.state().breath == 0.0f && v.tube().energy() < 1e-3 && v.state().whistle == 0.0f,
+                      "N=%d %s whistle: did not settle, energy %.3g", n, names[c], v.tube().energy());
+            v.noteOn(45.0f, 0.8f);                                       // and it sings again
+            std::vector<float> x((size_t)kDefaultFs);
+            v.render(x.data(), (int)x.size());
+            const int period = (int)std::lround(kDefaultFs / 110.0);
+            CHECK_MSG(periodicity(x.data() + 22050, 8192, period - 2, period + 2) > 0.9 && v.state().voicing > 0.5f,
+                      "N=%d %s whistle: does not sing again", n, names[c]);
+        }
 }
 
 // the live setters take what they are given: a breath past 1 is only louder,

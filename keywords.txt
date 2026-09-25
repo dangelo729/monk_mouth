@@ -16,6 +16,7 @@ Tuning	KEYWORD1
 VowelPose	KEYWORD1
 Consonant	KEYWORD1
 Pose	KEYWORD1
+WhistlePose	KEYWORD1
 
 #######################################
 # Methods and functions (KEYWORD2)
@@ -37,6 +38,8 @@ setTuning	KEYWORD2
 tuning	KEYWORD2
 noteOn	KEYWORD2
 noteOff	KEYWORD2
+whistle	KEYWORD2
+whistleRange	KEYWORD2
 syllable	KEYWORD2
 sing	KEYWORD2
 say	KEYWORD2
@@ -50,6 +53,7 @@ render	KEYWORD2
 latch	KEYWORD2
 vowel	KEYWORD2
 consonant	KEYWORD2
+whistlePose	KEYWORD2
 phoneName	KEYWORD2
 parsePhone	KEYWORD2
 

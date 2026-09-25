@@ -1,8 +1,9 @@
-// wind_pipe — wp_vocab.h  (plan §8)
+// wind_pipe — wp_vocab.h  (plan §8; whistle plan §6)
 // the data: two small tables covering all 39 ARPABET phonemes. vowels are
 // poses (tongue + lips, optionally a second pose for a diphthong); consonants
 // are a kind, a place, a degree and their timing. everything here is tuned,
-// first by `wptool fit`, then by ear.
+// first by `wptool fit`, then by ear. beside them, the whistle's vocabulary:
+// one pose per semitone, fitted by `wptool whistle fit`.
 #pragma once
 
 #include "wp_config.h"
@@ -59,5 +60,21 @@ VowelPose glidePose(uint8_t phone);
 struct FormantTarget { uint8_t phone; float f1, f2, f3; bool rounded; };
 extern const FormantTarget kFormantTargets[];
 extern const int kFormantTargetCount;
+
+// ---- the whistle (whistle plan §6) ---------------------------------------------------------
+// a whistled note is a pose: folds open, velum shut, the tongue, a pucker and
+// an optional slot behind it. raw anatomy units; slotPlace < 0: no slot.
+struct WhistlePose { float tongueX, tongueD, lipD, slotPlace, slotDegree; };
+
+// one row per semitone from kWhistleMidiLo, fitted at N = kDefaultSections
+// and the default tuning: the midi here is the pitch a 22-section voice whistles.
+extern const WhistlePose kWhistleTable[];
+extern const int kWhistleMidiLo;
+extern const int kWhistleCount;
+
+// the pose for a table midi: the two neighbouring rows interpolated by the
+// fraction of a semitone (a slot is interpolated when both rows have one, else
+// the nearer row's), clamped at the ends.
+WhistlePose whistlePose(float tableMidi);
 
 }  // namespace wp

@@ -1,4 +1,4 @@
-// wind_pipe — wp_body.h   (plan §4, §5)
+// wind_pipe — wp_body.h  (plan §4, §5; whistle plan §2)
 // the body: a pose eased toward its targets, turned into diameters once per
 // block, and watched for the three things a tube cannot know about itself —
 // where it hisses, when a closure lets go, and how hard.
@@ -69,6 +69,11 @@ struct BodyFrame {
     float turb[3] = {0, 0, 0};   // turbulence gain: slot 0, slot 1, lips
     int   turbIdx[3] = {1, 1, 1};
     float turbFrac[3] = {0, 0, 0};
+    // the airflow through the lips (whistle plan §2), si units
+    float jetFlow = 0.0f;        // m³/s: what the jet carries, after the nose's share
+    float jetDelay = 1.0f;       // samples: a nudge's transit along the jet
+    float jetHalfWidth = 0.0f;   // m: half the lip orifice
+    float lipArea = 0.0f;        // m²: the lip orifice
 };
 
 class Body {

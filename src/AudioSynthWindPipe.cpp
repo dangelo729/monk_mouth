@@ -80,6 +80,7 @@ void AudioSynthWindPipe::setTuning(const wp::Tuning& t) { IrqMask m; voice_.setT
 wp::Tuning AudioSynthWindPipe::tuning() const        { return voice_.tuning(); }   // caller side only: no mask
 void AudioSynthWindPipe::noteOn(float midi, float vel01) { IrqMask m; voice_.noteOn(midi, vel01); }
 void AudioSynthWindPipe::noteOff()                   { IrqMask m; voice_.noteOff(); }
+void AudioSynthWindPipe::whistle(float midi, float breath) { IrqMask m; voice_.whistle(midi, breath); }
 void AudioSynthWindPipe::setHalfband(bool on)        { voice_.setHalfband(on); }   // one byte: atomic as it is
 
 // ---- words: compiled here, caller-side and unmasked; committed by flag -------------------------------
@@ -112,7 +113,7 @@ int AudioSynthWindPipe::diameters(float* out, int max) const {
 
 void AudioSynthWindPipe::update(void) {
     {
-        IrqMask m;                                // ~100 bytes (~230 with a tuning), sub-microsecond
+        IrqMask m;                                // ~100 bytes (~240 with a tuning), sub-microsecond
         voice_.latch();
     }
     voice_.render(scratch_, AUDIO_BLOCK_SAMPLES);

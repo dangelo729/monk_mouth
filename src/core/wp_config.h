@@ -58,6 +58,27 @@ constexpr float kClosureAim = -0.3f;           // closures aim below zero
 constexpr float kBreathAim  = -0.05f;          // so does a breath of 0
 constexpr float kSlotClearMargin = 0.5f;       // clear aims this far above the base shape
 
+// ---- the whistle (whistle plan §2, §3, §5): a jet at the lips -------------------
+// the airflow is physical, so these are the physics' numbers, not choices.
+constexpr float kAirDensity      = 1.2f;       // kg/m³: air
+constexpr float kSoundSpeed      = 350.0f;     // m/s: the tube's own, 0.794 cm sections at 44.1 kHz
+constexpr float kJetConvection   = 0.4f;       // a nudge rides the jet at this fraction of its speed (fletcher)
+constexpr float kJetLeakHz       = 100.0f;     // the lips' air drifting slower than every whistle is no nudge: removed under this
+constexpr float kJetLowpassHz    = 3000.0f;    // a jet amplifies no nudge much shorter than it is wide: over the whistle band, it fades
+constexpr float kGlottisAreaShut = 0.03f;      // cm²: the folds' mean open area, voiced
+constexpr float kGlottisAreaOpen = 0.6f;       // cm²: the folds abducted
+constexpr float kJetMinArea      = 1e-3f;      // cm²: d = 0.032, the turbulence window's shut edge
+constexpr int   kMaxJetDelay     = 64;         // samples, a power of two: 1.45 ms, jets down to ~17 m/s at 1 cm
+constexpr float kWaveUnit        = 0.75f;      // Pa·m²: what one tube unit stands for; measured so a whistle sits near a sung vowel
+constexpr float kDiameterCm      = 1.0f;       // one diameter unit is one centimetre
+// a slot cut into the lip sections below the pucker is a slit against the
+// teeth, and a slit makes no jet: measured, the narrowest lip section over the
+// pucker is 0.1 in F, 0.2 in TH, 0.39 .. 0.78 in S (N 22 .. 48), 0.95 in a
+// slot behind a pucker and 1 in a bare pucker. none at or under the first,
+// all at or over the second.
+constexpr float kJetSlitCut      = 0.8f;
+constexpr float kJetSlitClear    = 0.93f;
+
 // ---- dynamics (§5): rates per second -------------------------------------------
 // the body's own rates are tunables (wp_tuning.h). these two are the free
 // constrictions' rates when no consonant brings its own, before the tuning's

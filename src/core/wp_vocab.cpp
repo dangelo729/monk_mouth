@@ -1,4 +1,4 @@
-// wind_pipe — wp_vocab.cpp  (plan §8)
+// wind_pipe — wp_vocab.cpp  (plan §8; whistle plan §6)
 #include "wp_vocab.h"
 
 namespace wp {
@@ -128,5 +128,62 @@ const FormantTarget kFormantTargets[] = {
     {ph::ER, 490.0f, 1350.0f, 1690.0f, false},
 };
 const int kFormantTargetCount = (int)(sizeof(kFormantTargets) / sizeof(kFormantTargets[0]));
+
+// ---- the whistle (whistle plan §6) -----------------------------------------------------------
+// one pose per semitone. this block is `wptool whistle fit`'s output, pasted:
+// re-run the fit after any change to the anatomy, the tube or the jet.
+// fitted by `wptool whistle fit`: 57960 poses screened, 57520 rendered, 9483 lock; N = 22, breath 0.80, 0.50 s.
+// a lock: periodicity above 0.95 and whistle above 0.5 after 300 ms. every lock also rendered at breath
+// 0.5 and 1.0 and at N = 16 and 26; the cost trades cents, off-mode, held locks and size error against pose jumps.
+// drift: whistleHz from breath 0.5 to 1.0.
+const int kWhistleMidiLo = 77;
+const WhistlePose kWhistleTable[] = {
+    // tongueX tongueD  lipD   slotPlace slotDegree       midi   measured (target)   cents   drift
+    {0.501f, 2.050f, 0.480f, -1.0f,  0.000f},   //  77    697.3 ( 698.5)     -3   no lock at 0.5
+    {0.536f, 2.050f, 0.480f, -1.0f,  0.000f},   //  78    748.8 ( 740.0)    +21   +144 c
+    {0.501f, 2.050f, 0.480f, 0.900f, 0.600f},   //  79    775.1 ( 784.0)    -20   +127 c
+    {0.431f, 2.050f, 0.410f, 0.750f, 0.600f},   //  80    831.1 ( 830.6)     +1   +126 c
+    {0.466f, 2.050f, 0.410f, 0.800f, 0.600f},   //  81    887.0 ( 880.0)    +14    +94 c
+    {0.483f, 2.050f, 0.410f, 0.800f, 0.600f},   //  82    936.1 ( 932.3)     +7    +90 c
+    {0.448f, 2.195f, 0.480f, 0.750f, 0.600f},   //  83    986.5 ( 987.8)     -2   +101 c
+    {0.501f, 2.122f, 0.410f, 0.800f, 0.600f},   //  84   1054.6 (1046.5)    +13    +81 c
+    {0.519f, 2.122f, 0.410f, 0.800f, 0.600f},   //  85   1115.5 (1108.7)    +11    +75 c
+    {0.501f, 2.267f, 0.480f, 0.800f, 0.600f},   //  86   1168.9 (1174.7)     -8    +65 c
+    {0.519f, 2.340f, 0.410f, 0.800f, 0.600f},   //  87   1241.6 (1244.5)     -4    +65 c
+    {0.536f, 2.485f, 0.340f, 0.800f, 0.600f},   //  88   1321.8 (1318.5)     +4    +56 c
+    {0.536f, 2.485f, 0.480f, 0.800f, 0.600f},   //  89   1398.7 (1396.9)     +2    +53 c
+    {0.624f, 2.557f, 0.270f, 0.850f, 0.600f},   //  90   1479.5 (1480.0)     -1    +34 c
+    {0.642f, 2.630f, 0.270f, 0.850f, 0.600f},   //  91   1566.6 (1568.0)     -2    +34 c
+    {0.642f, 2.267f, 0.270f, 0.850f, 0.400f},   //  92   1657.2 (1661.2)     -4    +46 c
+    {0.659f, 2.557f, 0.340f, 0.800f, 0.600f},   //  93   1768.1 (1760.0)     +8    +45 c
+    {0.659f, 2.702f, 0.480f, 0.800f, 0.600f},   //  94   1858.2 (1864.7)     -6   no lock at 0.5
+    {0.659f, 2.340f, 0.340f, 0.800f, 0.400f},   //  95   1993.6 (1975.5)    +16   no lock at 0.5
+};
+const int kWhistleCount = (int)(sizeof(kWhistleTable) / sizeof(kWhistleTable[0]));
+
+WhistlePose whistlePose(float tableMidi) {
+    const float top = (float)(kWhistleCount - 1);
+    float t = tableMidi - (float)kWhistleMidiLo;
+    if (!(t > 0.0f)) t = 0.0f;                    // a NaN lands on the first row
+    if (t > top) t = top;
+    int i = (int)t;
+    if (i > kWhistleCount - 2) i = kWhistleCount - 2 > 0 ? kWhistleCount - 2 : 0;
+    const float f = kWhistleCount > 1 ? t - (float)i : 0.0f;
+    const WhistlePose& a = kWhistleTable[i];
+    const WhistlePose& b = kWhistleTable[kWhistleCount > 1 ? i + 1 : i];
+    WhistlePose p;
+    p.tongueX = lerpf(a.tongueX, b.tongueX, f);
+    p.tongueD = lerpf(a.tongueD, b.tongueD, f);
+    p.lipD = lerpf(a.lipD, b.lipD, f);
+    if (a.slotPlace >= 0.0f && b.slotPlace >= 0.0f) {
+        p.slotPlace = lerpf(a.slotPlace, b.slotPlace, f);
+        p.slotDegree = lerpf(a.slotDegree, b.slotDegree, f);
+    } else {
+        const WhistlePose& near = f < 0.5f ? a : b;
+        p.slotPlace = near.slotPlace;
+        p.slotDegree = near.slotDegree;
+    }
+    return p;
+}
 
 }  // namespace wp

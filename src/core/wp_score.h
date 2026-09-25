@@ -29,7 +29,8 @@ enum Chan : uint8_t {
     kChWobble,          // a = 0..1
     kChNoteOn,          // restarts the vibrato onset clock
     kChStop,            // abandon the score, close everything down
-    kChPhone,           // a score event carries only its phoneme tag
+    kChPhone,           // a score event carries only its phoneme tag; a live write clears the readback
+    kChAbandon,         // abandon the score and clear the phoneme readback; nothing else
     kChCount
 };
 constexpr float kSlotClear = -1.0f;
@@ -104,7 +105,7 @@ public:
     bool beginBlock();                               // true: a new score starts this block
     const Event* next();                             // due events, one by one; null when none
     void endBlock();                                 // advance time by one block
-    void abandon();                                  // stop playing (kChStop)
+    void abandon();                                  // stop playing (kChStop, kChAbandon)
 
 private:
     Event    buf_[2][kMaxEvents];

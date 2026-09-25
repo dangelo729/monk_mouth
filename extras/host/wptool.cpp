@@ -11,6 +11,9 @@
 //   wptool corpus corpus build/corpus                   everything, for the ear
 //   wptool trace "AA B AA"                              10 ms frames: what the body did, what came out
 //   wptool throat [step]                                sweep the throat: where the vowel gates hold
+//   wptool whistle --tongue .8 .6 --lips .2 -o w.wav    a live whistle pose: lock, level, pitch against the lip modes
+//   wptool whistle 84 -o w.wav                          a note through Voice::whistle and the table: the same report
+//   wptool whistle fit                                  grid-search the whistle table; prints the block for wp_vocab.cpp
 //
 // common options: --size N (sections, 16..26)  --seed S  --midi M  --sec T
 //                 --breath B  --tense T  --no-halfband  --no-wobble
@@ -19,9 +22,12 @@
 #include <cstdio>
 #include <cstdlib>
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <cmath>
 #include <cstring>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -45,6 +51,8 @@ struct Args {
     uint32_t seed = 1;
     float midi = 48.0f, sec = 2.0f, breath = 0.8f, tense = -1.0f;
     float tonguePos = -1.0f, tongueHeight = -1.0f, lips = -1.0f, velum = -1.0f;
+    float slotPlace = -1.0f, slotDegree = 0.0f;           // --slot: a free constriction (slot 0)
+    bool  secGiven = false;
     bool  halfband = true, wobble = true;
     Tuning tuning;                                         // --tune: who is singing
     bool  tuned = false;
@@ -69,6 +77,8 @@ const TuneField kTuneFields[] = {
     {"rateVelum", &Tuning::rateVelum},                 {"vibFadeRate", &Tuning::vibFadeRate},
     {"wobbleSlowHz", &Tuning::wobbleSlowHz},           {"wobbleFastHz", &Tuning::wobbleFastHz},
     {"wobbleSlowCents", &Tuning::wobbleSlowCents},     {"wobbleFastCents", &Tuning::wobbleFastCents},
+    {"breathPressure", &Tuning::breathPressure},       {"jetLength", &Tuning::jetLength},
+    {"jetGain", &Tuning::jetGain},
 };
 
 bool parseTune(const std::string& s, Tuning& t) {
@@ -90,12 +100,13 @@ bool parseArgs(int argc, char** argv, Args& a) {
         else if (s == "--size") { float v; if (!num(v)) return false; a.size = (int)v; }
         else if (s == "--seed") { float v; if (!num(v)) return false; a.seed = (uint32_t)v; }
         else if (s == "--midi") { if (!num(a.midi)) return false; }
-        else if (s == "--sec") { if (!num(a.sec)) return false; }
+        else if (s == "--sec") { if (!num(a.sec)) return false; a.secGiven = true; }
         else if (s == "--breath") { if (!num(a.breath)) return false; }
         else if (s == "--tense") { if (!num(a.tense)) return false; }
         else if (s == "--tongue") { if (!num(a.tonguePos) || !num(a.tongueHeight)) return false; }
         else if (s == "--lips") { if (!num(a.lips)) return false; }
         else if (s == "--velum") { if (!num(a.velum)) return false; }
+        else if (s == "--slot") { if (!num(a.slotPlace) || !num(a.slotDegree)) return false; }
         else if (s == "--tune") { if (i + 1 >= argc || !parseTune(argv[++i], a.tuning)) return false; a.tuned = true; }
         else if (s == "--no-halfband") a.halfband = false;
         else if (s == "--no-wobble") a.wobble = false;
@@ -432,7 +443,7 @@ int cmdTrace(const Args& a) {
     const int frame = 441;                                 // 10 ms
     const int lagLo = (int)(kDefaultFs / 400.0f), lagHi = (int)(kDefaultFs / 60.0f);
     std::vector<float> x, hist;
-    printf("   ms  phone  level dB  period  centroid  breath voicing  hiss closed  press  slot0      slot1      lips velum\n");
+    printf("   ms  phone  level dB  period  centroid  breath voicing  hiss closed  press  slot0      slot1      lips velum  whistle  whistleHz\n");
     for (int f = 0; f < 1000; ++f) {
         std::vector<float> buf((size_t)frame);
         v.render(buf.data(), frame);
@@ -446,9 +457,9 @@ int cmdTrace(const Args& a) {
         char s0[16] = "    -    ", s1[16] = "    -    ";
         if (st.slotActive[0]) snprintf(s0, sizeof s0, "%.2f@%.2f", st.slotDegree[0], st.slotPlace[0]);
         if (st.slotActive[1]) snprintf(s1, sizeof s1, "%.2f@%.2f", st.slotDegree[1], st.slotPlace[1]);
-        printf("%5d  %-5s  %8.1f  %6.2f  %8.0f  %6.2f %7.2f %5.2f %6d  %5.2f  %-9s  %-9s  %4.2f %5.2f\n",
+        printf("%5d  %-5s  %8.1f  %6.2f  %8.0f  %6.2f %7.2f %5.2f %6d  %5.2f  %-9s  %-9s  %4.2f %5.2f  %7.2f  %9.1f\n",
                f * 10, phoneName(st.phoneme), level, per, cen, st.breath, st.voicing, st.hiss, (int)st.closed,
-               st.pressure, s0, s1, st.lips, st.velum);
+               st.pressure, s0, s1, st.lips, st.velum, st.whistle, st.whistleHz);
         if (!v.busy() && st.breath == 0.0f && level < -90.0) break;
     }
     if (a.out != "out.wav") return finish(x, a);
@@ -551,6 +562,401 @@ int cmdCorpus(const Args& a) {
     return 0;
 }
 
+// ---- whistle: a live pose, a note through the table, the fit (whistle plan §7.2) -----------------------
+// a pose: folds open, velum shut, the tongue and lips as given, an optional
+// slot, and breath. a note: Voice::whistle, through the table. either way,
+// after the first 300 ms: the lock (periodicity over 300 .. 6000 Hz), the
+// level, the measured whistleHz against the pose's lip modes, the second and
+// third harmonics against the fundamental, and the body's whistle.
+
+const float kLockSkipSec = 0.3f;                           // the lock is read after this
+
+// the lock report, for a voice that has rendered x
+int whistleReport(const Voice& v, const std::vector<float>& x, double whistleMean) {
+    const BodyState st = v.state();
+    const int skip = (int)(kLockSkipSec * kDefaultFs);
+    const int n = (int)x.size() - skip;
+    if (n < 4096) { fprintf(stderr, "too short: --sec at least 0.4\n"); return 1; }
+    const float* steady = x.data() + skip;
+    const double per = periodicity(steady, n < 8192 ? n : 8192, (int)(kDefaultFs / 6000.0f), (int)(kDefaultFs / 300.0f));
+    const double level = toDb(rms(steady, n));
+
+    float d[kMaxSections];
+    const int count = v.diameters(d, kMaxSections);
+    const float velumD = lerpf(kVelumShut, kVelumOpen, st.velum);
+    const std::vector<double> modes = whistleModes(count, d, velumD, v.tuning());
+    double nearest = 0.0;
+    for (double m : modes) if (nearest == 0.0 || std::fabs(m - st.whistleHz) < std::fabs(nearest - st.whistleHz)) nearest = m;
+
+    int fftSize = 1;
+    while (fftSize * 2 <= n) fftSize *= 2;
+    const std::vector<double> mag = magnitudeSpectrum(steady + (n - fftSize), fftSize, fftSize, true);
+    const double f0 = st.whistleHz;
+    const double h1 = f0 > 0.0 ? peakNear(mag, kDefaultFs, f0, 0.03) : 0.0;
+    const double h2 = f0 > 0.0 && 2.0 * f0 < 0.5 * kDefaultFs ? peakNear(mag, kDefaultFs, 2.0 * f0, 0.03) : 0.0;
+    const double h3 = f0 > 0.0 && 3.0 * f0 < 0.5 * kDefaultFs ? peakNear(mag, kDefaultFs, 3.0 * f0, 0.03) : 0.0;
+
+    printf("  jet       flow %.3f l/s  delay %.1f samples  half-width %.2f mm  lip area %.3f cm²\n",
+           1e3 * v.body().frame().jetFlow, v.body().frame().jetDelay, 1e3 * v.body().frame().jetHalfWidth,
+           1e4 * v.body().frame().lipArea);
+    printf("  lock      periodicity %.3f   level %.1f dB\n", per, level);
+    printf("  whistle   %.3f (mean after 300 ms %.3f)   whistleHz %.1f\n", st.whistle, whistleMean, st.whistleHz);
+    printf("  lip modes");
+    for (double m : modes) printf(" %.0f", m);
+    printf("   nearest %.0f  (%+.1f %%)\n", nearest, nearest > 0.0 ? 100.0 * (st.whistleHz / nearest - 1.0) : 0.0);
+    printf("  harmonics H2 %+.1f dB  H3 %+.1f dB\n", h1 > 0.0 ? toDb(h2 / h1) : 0.0, h1 > 0.0 ? toDb(h3 / h1) : 0.0);
+    return 0;
+}
+
+// render in 10 ms frames, averaging the body's whistle after the skip
+double renderWhistle(Voice& v, float sec, std::vector<float>& x) {
+    const int frame = 441;
+    const int skip = (int)(kLockSkipSec * kDefaultFs);
+    double sum = 0.0;
+    int frames = 0;
+    for (int f = 0; f < (int)(sec * kDefaultFs) / frame; ++f) {
+        std::vector<float> buf((size_t)frame);
+        v.render(buf.data(), frame);
+        x.insert(x.end(), buf.begin(), buf.end());
+        if ((int)x.size() > skip) { sum += v.state().whistle; ++frames; }
+    }
+    return frames ? sum / frames : 0.0;
+}
+
+// a table pose on the live setters: what Voice::whistle writes, less the note
+void setWhistlePose(Voice& v, const WhistlePose& p, float breath) {
+    v.setGlottis(1.0f);
+    v.setVelum(0.0f);
+    v.setTongue((p.tongueX - kTongueXMin) / (kTongueXMax - kTongueXMin), (kTongueDMax - p.tongueD) / (kTongueDMax - kTongueDMin));
+    v.setLips(p.lipD / kLipDMax);
+    if (p.slotPlace >= 0.0f) v.setConstriction(0, p.slotPlace, p.slotDegree);
+    else v.clearConstriction(0);
+    v.clearConstriction(1);
+    v.setBreath(breath);
+}
+
+double midiToHz(double m) { return 440.0 * std::pow(2.0, (m - 69.0) / 12.0); }
+double hzToMidi(double hz) { return 69.0 + 12.0 * std::log2(hz / 440.0); }
+
+// ---- the fit ----------------------------------------------------------------------------------------------
+// a grid of whistle poses: the tongue as the vowel fit has it (23 x 21), the
+// pucker over raw lipD 0.2 .. 0.9 (11 steps), and no slot or one behind the
+// lips at 4 places x 3 degrees (a degree under the pucker at or past 0.86 is
+// a slit, and skipped). screened by the lip modes (a lock sits on one: the
+// pose needs one in the whistle band), then every survivor is rendered at the
+// fit's breath and its lock measured as `whistle` measures it: periodicity
+// after 300 ms, the body's whistle and whistleHz. every lock is rendered
+// again at breath 0.5 and 1.0, and at the fit's breath at N = 16 and 26.
+// per semitone, the candidates are the locks within half a semitone of the
+// note; a viterbi pass picks one per semitone, trading the cents error, the
+// lock's distance from its own lip mode (an off-mode lock drifts more with
+// breath), a lock lost at 0.5 or 1.0, and the lock's error at the other
+// sizes (the jet's transit does not scale with size, so a pose near its
+// threshold loses the lock or jumps mode there) against pose jumps and slot
+// flips between neighbours.
+
+struct WhistleCand {
+    WhistlePose p;
+    double mode = 0.0;                                     // the screen's: the lowest lip mode in the band
+    double hz = 0.0, per = 0.0, whistle = 0.0, own = 0.0;  // the lock, and the lip mode nearest it
+    bool locked = false;
+    int held = 0;                                          // of the breaths either side, how many it locks at too
+    double sizeCost = 0.0;                                 // how far the lock strays at the other human sizes
+};
+
+const double kFitBandLo = 400.0, kFitBandHi = 4500.0;     // the lip modes a lock is looked for on
+const double kLockPer = 0.95, kLockWhistle = 0.5;         // what a lock is
+const int kFitSizeLo = 16, kFitSizeHi = 26;               // the human sizes a row is also asked to lock at
+const double kSizeMiss = 9.0;                              // a size that does not lock costs a 300-cent miss
+
+std::vector<double> poseLipModes(int n, const Tuning& tuning, const WhistlePose& p) {
+    Pose pose;
+    pose.tongueX = p.tongueX; pose.tongueD = p.tongueD; pose.lipD = p.lipD; pose.velumD = kVelumShut;
+    if (p.slotPlace >= 0.0f) { pose.slot[0].active = true; pose.slot[0].place = p.slotPlace; pose.slot[0].degree = p.slotDegree; }
+    float d[kMaxSections];
+    shapeTract(pose, n, d, nullptr, nullptr, tuning);
+    return whistleModes(n, d, kVelumShut, tuning);
+}
+
+// one render of a pose; the lock read after 300 ms. periodicity only for a
+// voice whose own whistle is up: it is the costly half.
+void measureLock(WhistleCand& c, const Args& a, float breath, float sec, int size = 0) {
+    Voice v(size > 0 ? size : a.size, a.seed);
+    if (a.tuned) v.setTuning(a.tuning);
+    setWhistlePose(v, c.p, breath);
+    std::vector<float> x((size_t)(sec * kDefaultFs));
+    v.render(x.data(), (int)x.size());
+    const BodyState st = v.state();
+    c.hz = st.whistleHz;
+    c.whistle = st.whistle;
+    c.per = 0.0;
+    c.locked = false;
+    if (st.whistle <= kLockWhistle || st.whistleHz <= 0.0f) return;
+    const int skip = (int)(kLockSkipSec * kDefaultFs);
+    const int n = (int)x.size() - skip;
+    c.per = periodicity(x.data() + skip, n < 8192 ? n : 8192, (int)(kDefaultFs / 6000.0f), (int)(kDefaultFs / 300.0f));
+    c.locked = c.per > kLockPer;
+    float d[kMaxSections];
+    const int count = v.diameters(d, kMaxSections);
+    c.own = 0.0;
+    for (double m : whistleModes(count, d, kVelumShut, v.tuning()))
+        if (c.own == 0.0 || std::fabs(m - c.hz) < std::fabs(c.own - c.hz)) c.own = m;
+}
+
+// run f(i) for i in [0, count) on every core
+template <class F> void parallelFor(int count, F f) {
+    std::atomic<int> next(0);
+    unsigned cores = std::thread::hardware_concurrency();
+    if (cores < 1) cores = 1;
+    std::vector<std::thread> pool;
+    for (unsigned t = 0; t < cores; ++t)
+        pool.emplace_back([&]() { for (int i = next++; i < count; i = next++) f(i); });
+    for (std::thread& t : pool) t.join();
+}
+
+double centsOff(double hz, double midi) { return 1200.0 * std::log2(hz / midiToHz(midi)); }
+
+// the continuity term between two neighbouring rows: the pose's jump in
+// normalized units (the tongue's two axes over their range, the pucker over
+// its span, a slot's place and degree over their grid's), and a slot on/off
+// flip, which a slide hears as a step.
+double poseJump(const WhistlePose& a, const WhistlePose& b) {
+    const double dx = (a.tongueX - b.tongueX) / (kTongueXMax - kTongueXMin);
+    const double dd = (a.tongueD - b.tongueD) / (kTongueDMax - kTongueDMin);
+    const double dl = (a.lipD - b.lipD) / 0.7;
+    double c = dx * dx + dd * dd + dl * dl;
+    const bool sa = a.slotPlace >= 0.0f, sb = b.slotPlace >= 0.0f;
+    if (sa && sb) {
+        const double sp = (a.slotPlace - b.slotPlace) / 0.15, sd = (a.slotDegree - b.slotDegree) / 0.35;
+        c += sp * sp + sd * sd;
+    } else if (sa != sb) {
+        c += 3.0;
+    }
+    return c;
+}
+
+int cmdWhistleFit(const Args& a) {
+    const auto t0 = std::chrono::steady_clock::now();
+    const Tuning tuning = clamped(a.tuning, kDefaultFs);
+    const float breath = a.breath;
+    const float sec = a.secGiven ? a.sec : 0.5f;
+
+    // ---- the grid ----
+    std::vector<WhistleCand> grid;
+    const int nx = 23, nd = 21, nl = 11;
+    const float places[] = {0.75f, 0.80f, 0.85f, 0.90f}, degrees[] = {0.25f, 0.4f, 0.6f};
+    for (int ix = 0; ix < nx; ++ix)
+        for (int id = 0; id < nd; ++id)
+            for (int il = 0; il < nl; ++il) {
+                WhistleCand c;
+                c.p.tongueX = lerpf(kTongueXMin, kTongueXMax, (float)ix / (nx - 1));
+                c.p.tongueD = lerpf(kTongueDMin, kTongueDMax, (float)id / (nd - 1));
+                c.p.lipD = lerpf(0.2f, 0.9f, (float)il / (nl - 1));
+                c.p.slotPlace = -1.0f; c.p.slotDegree = 0.0f;
+                grid.push_back(c);
+                for (float sp : places)
+                    for (float sd : degrees) {
+                        if (sp >= 0.86f && sd < c.p.lipD) continue;          // a slit at the lips: no jet
+                        WhistleCand s = c;
+                        s.p.slotPlace = sp; s.p.slotDegree = sd;
+                        grid.push_back(s);
+                    }
+            }
+
+    // ---- the screen: a lip mode in the whistle band ----
+    parallelFor((int)grid.size(), [&](int i) {
+        grid[(size_t)i].mode = 0.0;
+        for (double m : poseLipModes(a.size, tuning, grid[(size_t)i].p))
+            if (m >= kFitBandLo && m <= kFitBandHi) { grid[(size_t)i].mode = m; break; }
+    });
+    std::vector<WhistleCand> cands;
+    for (const WhistleCand& c : grid) if (c.mode > 0.0) cands.push_back(c);
+    const auto t1 = std::chrono::steady_clock::now();
+    fprintf(stderr, "screened %d poses: %d with a lip mode in %.0f .. %.0f Hz (%.1f s)\n", (int)grid.size(),
+            (int)cands.size(), kFitBandLo, kFitBandHi, std::chrono::duration<double>(t1 - t0).count());
+
+    // ---- the renders ----
+    parallelFor((int)cands.size(), [&](int i) { measureLock(cands[(size_t)i], a, breath, sec); });
+    std::vector<WhistleCand*> locks;
+    for (WhistleCand& c : cands) if (c.locked) locks.push_back(&c);
+    // every lock again at breath 0.5 and 1.0: a pose that holds its lock only
+    // near the fit's breath sits at its threshold and loses it to a softer
+    // note. and at the ends of the human sizes, where whistle() plays the same
+    // pose for a note shifted by the size: every mode scales with 1 / N, the
+    // jet's transit does not.
+    parallelFor((int)locks.size(), [&](int i) {
+        WhistleCand& c = *locks[(size_t)i];
+        WhistleCand soft, hard;
+        soft.p = hard.p = c.p;
+        measureLock(soft, a, 0.5f, sec);
+        measureLock(hard, a, 1.0f, sec);
+        c.held = (soft.locked ? 1 : 0) + (hard.locked ? 1 : 0);
+        c.sizeCost = 0.0;
+        for (int n : {kFitSizeLo, kFitSizeHi}) {
+            WhistleCand other;
+            other.p = c.p;
+            measureLock(other, a, breath, sec, n);
+            if (!other.locked) { c.sizeCost += kSizeMiss; continue; }
+            const double e = 1200.0 * std::log2(other.hz / (c.hz * (double)a.size / (double)n)) / 100.0;
+            c.sizeCost += e * e;
+        }
+    });
+    const auto t2 = std::chrono::steady_clock::now();
+    fprintf(stderr, "rendered %d at breath %.2f for %.2f s: %d lock, each rendered again at breath 0.5 and 1.0 and at N = %d and %d (%.1f s)\n",
+            (int)cands.size(), breath, sec, (int)locks.size(), kFitSizeLo, kFitSizeHi,
+            std::chrono::duration<double>(t2 - t1).count());
+    if (locks.empty()) { fprintf(stderr, "nothing locks\n"); return 1; }
+
+    // ---- per semitone: the locks within half a semitone of the note ----
+    double loHz = 1e30, hiHz = 0.0;
+    for (const WhistleCand* c : locks) { loHz = std::min(loHz, c->hz); hiHz = std::max(hiHz, c->hz); }
+    const int mLo = (int)std::ceil(hzToMidi(loHz) - 0.5), mHi = (int)std::floor(hzToMidi(hiHz) + 0.5);
+    const size_t keep = 120;
+    // the cost, per row: (cents / 25)², 0.3 (cents off its own lip mode / 100)²,
+    // 4 for each of breath 0.5 and 1.0 it loses the lock at, and 4 (size
+    // error / 100 cents)² summed over N = 16 and 26 (a lost lock counts 300
+    // cents); per step: the pose's jump, and 3 more for a slot flip.
+    const double kOffWeight = 0.3, kJumpWeight = 1.0, kHeldWeight = 4.0, kSizeWeight = 4.0;
+    auto local = [&](const WhistleCand& c, int m) {
+        const double e = centsOff(c.hz, m) / 25.0;
+        const double off = c.own > 0.0 ? 1200.0 * std::log2(c.hz / c.own) / 100.0 : 1.0;
+        return e * e + kOffWeight * off * off + kHeldWeight * (2 - c.held) + kSizeWeight * c.sizeCost;
+    };
+    std::vector<std::vector<std::pair<double, const WhistleCand*>>> per;
+    for (int m = mLo; m <= mHi; ++m) {
+        std::vector<std::pair<double, const WhistleCand*>> c;
+        for (const WhistleCand* w : locks)
+            if (std::fabs(centsOff(w->hz, m)) <= 50.0) c.push_back({local(*w, m), w});
+        std::sort(c.begin(), c.end(), [](const auto& l, const auto& r) { return l.first < r.first; });
+        if (c.size() > keep) c.resize(keep);
+        per.push_back(c);
+    }
+    // the longest run of semitones that each have a lock
+    int runLo = 0, runLen = 0;
+    for (int i = 0; i < (int)per.size();) {
+        if (per[(size_t)i].empty()) { ++i; continue; }
+        int j = i;
+        while (j < (int)per.size() && !per[(size_t)j].empty()) ++j;
+        if (j - i > runLen) { runLo = i; runLen = j - i; }
+        i = j;
+    }
+    if (runLen == 0) { fprintf(stderr, "no semitone has a lock within 50 cents\n"); return 1; }
+    for (int i = 0; i < (int)per.size(); ++i)
+        if (per[(size_t)i].empty()) fprintf(stderr, "midi %d: no lock within 50 cents\n", mLo + i);
+
+    // ---- viterbi over the run ----
+    std::vector<std::vector<double>> best((size_t)runLen);
+    std::vector<std::vector<int>> from((size_t)runLen);
+    for (int k = 0; k < runLen; ++k) {
+        const auto& cur = per[(size_t)(runLo + k)];
+        best[(size_t)k].assign(cur.size(), 1e30);
+        from[(size_t)k].assign(cur.size(), -1);
+        for (size_t b = 0; b < cur.size(); ++b) {
+            if (k == 0) { best[0][b] = cur[b].first; continue; }
+            const auto& prev = per[(size_t)(runLo + k - 1)];
+            for (size_t p = 0; p < prev.size(); ++p) {
+                const double c = best[(size_t)k - 1][p] + cur[b].first + kJumpWeight * poseJump(prev[p].second->p, cur[b].second->p);
+                if (c < best[(size_t)k][b]) { best[(size_t)k][b] = c; from[(size_t)k][b] = (int)p; }
+            }
+        }
+    }
+    std::vector<const WhistleCand*> pick((size_t)runLen, nullptr);
+    {
+        int at = 0;
+        for (size_t b = 1; b < best[(size_t)runLen - 1].size(); ++b)
+            if (best[(size_t)runLen - 1][b] < best[(size_t)runLen - 1][(size_t)at]) at = (int)b;
+        for (int k = runLen - 1; k >= 0; --k) {
+            pick[(size_t)k] = per[(size_t)(runLo + k)][(size_t)at].second;
+            at = from[(size_t)k][(size_t)at];
+        }
+    }
+
+    // ---- the drift: each row at breath 0.5 and 1.0 ----
+    std::vector<WhistleCand> soft((size_t)runLen), hard((size_t)runLen);
+    for (int k = 0; k < runLen; ++k) { soft[(size_t)k].p = hard[(size_t)k].p = pick[(size_t)k]->p; }
+    parallelFor(runLen, [&](int k) {
+        measureLock(soft[(size_t)k], a, 0.5f, 1.0f);
+        measureLock(hard[(size_t)k], a, 1.0f, 1.0f);
+    });
+    const auto t3 = std::chrono::steady_clock::now();
+
+    const int midiLo = mLo + runLo;
+    double worstCents = 0.0, worstDrift = 0.0;
+    int flips = 0;
+    printf("// fitted by `wptool whistle fit`: %d poses screened, %d rendered, %d lock; N = %d, breath %.2f, %.2f s.\n",
+           (int)grid.size(), (int)cands.size(), (int)locks.size(), a.size, breath, sec);
+    printf("// a lock: periodicity above %.2f and whistle above %.1f after 300 ms. every lock also rendered at breath\n"
+           "// 0.5 and 1.0 and at N = %d and %d; the cost trades cents, off-mode, held locks and size error against pose jumps.\n"
+           "// drift: whistleHz from breath 0.5 to 1.0.\n", kLockPer, kLockWhistle, kFitSizeLo, kFitSizeHi);
+    printf("const int kWhistleMidiLo = %d;\n", midiLo);
+    printf("const WhistlePose kWhistleTable[] = {\n");
+    printf("    // tongueX tongueD  lipD   slotPlace slotDegree       midi   measured (target)   cents   drift\n");
+    for (int k = 0; k < runLen; ++k) {
+        const WhistleCand& c = *pick[(size_t)k];
+        const int m = midiLo + k;
+        const double cents = centsOff(c.hz, m);
+        char drift[48];
+        if (soft[(size_t)k].locked && hard[(size_t)k].locked) {
+            const double dc = 1200.0 * std::log2(hard[(size_t)k].hz / soft[(size_t)k].hz);
+            snprintf(drift, sizeof drift, "%+4.0f c", dc);
+            worstDrift = std::max(worstDrift, std::fabs(dc));
+        } else {
+            snprintf(drift, sizeof drift, "no lock at %s", soft[(size_t)k].locked ? "1.0" : (hard[(size_t)k].locked ? "0.5" : "0.5, 1.0"));
+        }
+        worstCents = std::max(worstCents, std::fabs(cents));
+        if (k > 0 && (pick[(size_t)k - 1]->p.slotPlace >= 0.0f) != (c.p.slotPlace >= 0.0f)) ++flips;
+        char slot[32];
+        if (c.p.slotPlace >= 0.0f) snprintf(slot, sizeof slot, "%.3ff, %.3ff", c.p.slotPlace, c.p.slotDegree);
+        else snprintf(slot, sizeof slot, "-1.0f,  0.000f");
+        printf("    {%.3ff, %.3ff, %.3ff, %s},   // %3d   %6.1f (%6.1f)   %+4.0f   %s\n", c.p.tongueX, c.p.tongueD, c.p.lipD,
+               slot, m, c.hz, midiToHz(m), cents, drift);
+    }
+    printf("};\n");
+    printf("const int kWhistleCount = (int)(sizeof(kWhistleTable) / sizeof(kWhistleTable[0]));\n");
+    fprintf(stderr, "midi %d .. %d: %d rows, worst %.0f cents, worst drift %.0f cents, %d slot flips, %.1f s in all\n",
+            midiLo, midiLo + runLen - 1, runLen, worstCents, worstDrift, flips,
+            std::chrono::duration<double>(t3 - t0).count());
+    return 0;
+}
+
+int cmdWhistle(const Args& a) {
+    if (!a.pos.empty() && a.pos[0] == "fit") return cmdWhistleFit(a);
+    const float sec = a.secGiven ? a.sec : 1.5f;           // the whistle's own default length
+    Voice v(a.size, a.seed);
+    setup(v, a);
+    if (!a.pos.empty()) {                                  // a note, through the table
+        const float midi = (float)atof(a.pos[0].c_str());
+        v.whistle(midi, a.breath);
+        float lo, hi;
+        v.whistleRange(lo, hi);
+        const double hz = midiToHz(midi);
+        printf("whistle %.2f (%.1f Hz)  breath %.2f  N = %d  table range %.2f .. %.2f\n", midi, hz, a.breath, a.size, lo, hi);
+        std::vector<float> x;
+        const double mean = renderWhistle(v, sec, x);
+        const BodyState st = v.state();
+        printf("  note      whistleHz %.1f against %.1f Hz: %+.0f cents (%+.0f cents from the nearest octave)\n",
+               st.whistleHz, hz, st.whistleHz > 0.0f ? centsOff(st.whistleHz, midi) : 0.0,
+               st.whistleHz > 0.0f ? std::remainder(centsOff(st.whistleHz, midi), 1200.0) : 0.0);
+        if (whistleReport(v, x, mean)) return 1;
+        return finish(x, a);
+    }
+    if (a.tonguePos < 0.0f || a.lips < 0.0f) { fprintf(stderr, "usage: wptool whistle NOTE | fit | --tongue POS HEIGHT --lips L ...\n"); return 1; }
+    v.setGlottis(1.0f);
+    v.setTongue(a.tonguePos, a.tongueHeight);
+    v.setLips(a.lips);
+    if (a.slotPlace >= 0.0f) v.setConstriction(0, a.slotPlace, a.slotDegree);
+    v.setVelum(0.0f);
+    v.setBreath(a.breath);
+    char slot[32] = "-";
+    if (a.slotPlace >= 0.0f) snprintf(slot, sizeof slot, "%.3f %.3f", a.slotPlace, a.slotDegree);
+    printf("tongue %.3f %.3f  lips %.3f  slot %s  breath %.2f  N = %d\n", a.tonguePos, a.tongueHeight, a.lips, slot,
+           a.breath, a.size);
+    std::vector<float> x;
+    const double mean = renderWhistle(v, sec, x);
+    if (whistleReport(v, x, mean)) return 1;
+    return finish(x, a);
+}
+
 void usage() {
     fprintf(stderr,
         "wptool vowel AA|rest [--midi 48] [--sec 2] -o aa.wav\n"
@@ -563,6 +969,12 @@ void usage() {
         "wptool corpus <corpusDir> <outDir>\n"
         "wptool trace \"AA B AA\" [-o trace.wav]        10 ms frames: level, periodicity, centroid, body\n"
         "wptool throat [step]                          sweep the throat: where the vowel gates hold\n"
+        "wptool whistle --tongue POS HEIGHT --lips L [--slot PLACE DEGREE] [--breath B] [--sec 1.5] -o w.wav\n"
+        "                                              a live whistle pose: lock, level, pitch against the lip modes\n"
+        "wptool whistle NOTE [--breath B] [--sec 1.5] [--size N] -o w.wav\n"
+        "                                              a note through whistle(midi, breath) and the table: the same report\n"
+        "wptool whistle fit [--size N] [--breath 0.8] [--sec 0.5] [--tune ...]\n"
+        "                                              grid-search the whistle table (N = 22 is what whistle() assumes)\n"
         "options: --size N  --seed S  --midi M  --sec T  --breath B  --tense T  --no-halfband  --no-wobble\n"
         "         --tune NAME=VALUE   any field of wp::Tuning, repeatable\n"
         "         --png FILE   also write a spectrogram of the render\n");
@@ -585,6 +997,7 @@ int main(int argc, char** argv) {
     if (cmd == "corpus")   return cmdCorpus(a);
     if (cmd == "trace")    return cmdTrace(a);
     if (cmd == "throat")   return cmdThroat(a);
+    if (cmd == "whistle")  return cmdWhistle(a);
     usage();
     return 1;
 }

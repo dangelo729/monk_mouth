@@ -1,4 +1,4 @@
-// wind_pipe — wp_body.cpp  (plan §4, §5)
+// wind_pipe — wp_body.cpp  (plan §4, §5; whistle plan §2)
 #include "wp_body.h"
 
 #include "wp_noise.h"
@@ -327,6 +327,56 @@ void Body::tick(Tube& tube) {
     frame_.voicing = breath_.x * std::sqrt(std::sqrt(tense)) * shut;
     frame_.voicedness = tense * breath_.x * shut;
     frame_.aspiration = breath_.x * lerpf(1.0f - std::sqrt(tense), 1.0f, glottisOpen) * t_.aspirationGain;
+
+    // ---- the airflow (whistle plan §2) ---------------------------------------------------
+    // bernoulli through three orifices in series: the folds, the narrowest place
+    // between them and the lips, and the lips. voiced, the folds are narrowest and
+    // the jet is slow; folds open and lips puckered, the pressure drops at the lips
+    // and the jet is fast. areas are d² in cm², as the tube treats them.
+    {
+        int lipStart = 0;
+        while (lipStart < n_ && !atOrPast(lipStart, n_, 39)) ++lipStart;
+        if (lipStart > n_ - 1) lipStart = n_ - 1;                 // too small for lips: the last section stands in
+        float tract = 1e30f, lip = 1e30f;
+        for (int i = 0; i < lipStart; ++i) { const float a = d_[i] * d_[i]; if (a < tract) tract = a; }
+        for (int i = lipStart; i < n_; ++i) { const float a = d_[i] * d_[i]; if (a < lip) lip = a; }
+        const bool open = tract >= kJetMinArea && lip >= kJetMinArea;   // a closure anywhere stops the air
+        float glottal = lerpf(kGlottisAreaShut, kGlottisAreaOpen, glottisOpen);
+        if (glottal < kJetMinArea) glottal = kJetMinArea;
+        if (tract < kJetMinArea) tract = kJetMinArea;
+        if (lip < kJetMinArea) lip = kJetMinArea;
+
+        const float cm2 = 1e-4f * kDiameterCm * kDiameterCm;       // cm² -> m²
+        const float ag = glottal * cm2, at = tract * cm2, al = lip * cm2;
+        // sqrt(2 breath pressure / rho), as three roots: no finite pressure overflows it
+        const float pressure = t_.breathPressure > 0.0f ? t_.breathPressure : 0.0f;
+        const float speed = std::sqrt(2.0f / kAirDensity) * std::sqrt(breath_.x) * std::sqrt(pressure);
+        const float u = open ? speed / std::sqrt(1.0f / (ag * ag) + 1.0f / (at * at) + 1.0f / (al * al)) : 0.0f;
+        const float vj = u / al;                                   // m/s at the lips
+
+        // the transit: jet length over the nudge's speed. clamped, and a NaN lands long.
+        const float lo = 1.0f, hi = (float)(kMaxJetDelay - 2);
+        float delay = vj > 0.0f ? (t_.jetLength * 0.01f * kDiameterCm) / (kJetConvection * vj) * fs_ : hi;
+        delay = delay < hi ? (delay > lo ? delay : lo) : hi;
+
+        // the nose takes its share, and two things leave no jet to nudge. pulsing
+        // folds chop the flow into puffs: a jet is steady only as far as the
+        // folds have stopped (the voicing gate's complement). and the jet's
+        // orifice is the pucker, the lips channel itself: a slot cut deeper than
+        // the pucker inside the lip sections is a slit against the teeth (F, TH,
+        // S through its taper), and a slit breaks the jet. measured: without the
+        // first a sung UW's jet, saturated by the voice itself, was 17 dB under
+        // the vowel; without the second an F or a TH carried a wandering tone
+        // 16 to 22 dB under its hiss. the orifice's area stays the lip minimum.
+        const float lipD = std::sqrt(lip);
+        const float pucker = clampf(pose_.lipD, 0.0f, kLipDMax);
+        const float slit = pucker > 0.0f ? lipD / pucker : 0.0f;
+        const float jet = smoothstep01((slit - kJetSlitCut) / (kJetSlitClear - kJetSlitCut));
+        frame_.jetFlow = u * oral * (1.0f - shut) * jet;
+        frame_.jetDelay = delay;
+        frame_.jetHalfWidth = 0.5f * lipD * kDiameterCm * 0.01f;
+        frame_.lipArea = al;
+    }
 }
 
 }  // namespace wp

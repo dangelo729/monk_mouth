@@ -17,7 +17,7 @@
 //                land in the same block.
 //   update()     masks interrupts ONLY around voice_.latch() — the ~100-byte
 //                copy of that table to the audio side (and, when one was set,
-//                the 128-byte tuning), sub-microsecond — and renders
+//                the 140-byte tuning), sub-microsecond — and renders
 //                unmasked. a target set from the main loop lands at the top
 //                of the next block: one latency, for everything.
 //   state()      copies the published BodyState back the same way.
@@ -74,6 +74,7 @@ public:
     // conveniences
     void noteOn(float midi, float vel01);   // pitch + breath + vibrato onset, one block
     void noteOff();                         // breath to 0
+    void whistle(float midi, float breath); // a whistle pose for this note from the table, and breath, one block (whistle plan §6)
     // words (plan §9). false = bad phoneme or overflow, and nothing was disturbed.
     // main loop only (see above).
     bool syllable(const char* phones);      // now, at the current note

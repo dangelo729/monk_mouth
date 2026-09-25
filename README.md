@@ -15,6 +15,8 @@ the consequence.
   Words are a timed list of the same target-sets. There is no second path.
 - **Able to say words, loosely.** ARPABET in, sung on notes. Recognizable in a
   song you know is the bar, not dictation.
+- **Able to whistle.** Open the folds, pucker, breathe: a jet at the lips locks
+  onto the front cavity's ring. No switch; the pressure drop decides.
 - **Host-first.** Everything but one wrapper file compiles on a Mac with clang
   and nothing else, renders WAVs, and passes tests.
 
@@ -25,7 +27,7 @@ the consequence.
 
 | | |
 |---|---|
-| engine, body, vocabulary, words, tunables | done; 62 host tests green (`make test`) |
+| engine, body, vocabulary, words, tunables, whistle | done; 75 host tests green (`make test`) |
 | Teensy wrapper + 4 examples | written; **compile clean for Teensy 4.1** (PlatformIO, `-Wall -Wextra`) |
 | hardware go / no-go (`99_Benchmark`: 4 voices ≤ 25 % CPU) | **not yet run** — needs a board |
 | by-ear passes | **not yet done** — levels were set by measurement against speech norms (see *Tuning*) |
@@ -87,6 +89,8 @@ Tuning tuning() const;                  // the last one asked for, as held
 // conveniences
 void noteOn(float midi, float vel01);   // pitch + breath + vibrato onset
 void noteOff();                         // breath to 0
+void whistle(float midi, float breath); // a whistle pose for this note from the table, and breath; ends any words in flight
+void whistleRange(float& lo, float& hi) const;   // the notes whistle() reaches without folding (wp::Voice only)
 // words
 bool syllable(const char* phones);      // now, at the current note
 bool sing(const Syllable* syls, int n); // {phones, midi, ms}
@@ -94,7 +98,7 @@ bool sing(const Syllable* syls, int n, float breath);   // at this breath; the v
 bool say(const char* phones);           // "HH AH0 L OW1 / W ER1 L D"
 void stop();   bool busy() const;
 // readback
-BodyState state() const;                // eased pose, f0, voicing, hiss, closed, phoneme
+BodyState state() const;                // eased pose, f0, voicing, hiss, closed, phoneme, whistle, whistleHz
 int  diameters(float* out, int max) const;
 // the engine (wp::Voice only)
 void render(float* out, int n);
@@ -139,7 +143,7 @@ The rig lives in `extras/host`; the root `Makefile` forwards to it, so these
 work from either place.
 
 ```
-make test        # 62 tests: tube, glottis, body, voice, vocabulary, score, tuning
+make test        # 75 tests: tube, glottis, body, voice, vocabulary, score, tuning, jet, whistle
 make tool        # extras/host/build/wptool
 make corpus      # every phoneme in three vowel contexts + the sung lines in
                  # extras/host/corpus/ -> extras/host/build/corpus/*.wav
@@ -157,6 +161,9 @@ wptool sing corpus/twinkle.txt -o song.wav       one "phones midi ms" per line; 
 wptool say "HH AH0 L OW1 / W ER1 L D" -o hello.wav
 wptool trace "AA S AA"                           10 ms frames: level, periodicity, centroid, body state
 wptool throat [step]                             sweep the throat: the map of where the vowel gates hold
+wptool whistle --tongue .9 .6 --lips .3 -o w.wav a live whistle pose: lock, level, whistleHz against the lip modes
+wptool whistle 84 -o w.wav                       a note through whistle(): the same report
+wptool whistle fit                               grid-search the whistle table; prints the block (see Whistling)
    any render:  --png spec.png                   a spectrogram (0–8 kHz, ticks every 100 ms)
    options:     --size N --seed S --midi M --breath B --tense T --no-halfband --no-wobble
                 --tune NAME=VALUE                any field of wp::Tuning, repeatable (formants and fit take it too)
@@ -182,7 +189,9 @@ targets (live setters | due score events)
    -> body: every channel approaches its target     -> eased pose
    -> anatomy: pose -> 22 diameters + velum         -> areas -> reflections
    -> watchers: closures, releases, pressure        -> burst + noise gains
-   -> 128 x { glottis + aspiration -> tube (+nose) + turbulence + bursts }
+   -> airflow: folds, tract, lips in series         -> the jet's flow + transit
+   -> 128 x { glottis + aspiration -> tube (+nose) + turbulence + bursts
+              + the jet at the lips, fed by the lips' own flow }
    -> halfband lowpass -> gain -> clamp
    -> state published for readback
 ```
@@ -196,9 +205,10 @@ targets (live setters | due score events)
 | `src/core/wp_tube.{h,cpp}` | Kelly-Lochbaum tube + nose, halfband |
 | `src/core/wp_glottis.{h,cpp}` | LF pulse as recurrences, closed form as oracle |
 | `src/core/wp_noise.{h,cpp}` | aspiration + frication bands, modulator, turbulence window |
-| `src/core/wp_body.{h,cpp}` | anatomy; dynamics, releases, pressure |
+| `src/core/wp_body.{h,cpp}` | anatomy; dynamics, releases, pressure; the airflow through the lips |
+| `src/core/wp_jet.{h,cpp}` | the jet at the lips: transit line, saturation, whistle telemetry |
 | `src/core/wp_pitch.{h,cpp}` | glide, vibrato, wobble |
-| `src/core/wp_vocab.{h,cpp}` | the 39 phonemes: vowel poses, consonant table |
+| `src/core/wp_vocab.{h,cpp}` | the 39 phonemes: vowel poses, consonant table; the whistle table |
 | `src/core/wp_score.{h,cpp}` | parser, compiler, player; timing constants |
 | `src/core/wp_voice.{h,cpp}` | the public surface |
 | `extras/host/` | Makefile, tests, `wptool`, WAV/PNG writers, `corpus/` |
@@ -231,6 +241,7 @@ voice.setTuning(t);             // lands whole at the top of the next block
 | consonants | `turbulenceGain` `fricationHz` `fricationQ` `voicedFrication` `burstGain` `burstHalfLife` `diction` |
 | motion | `rateBreathUp` `rateBreathDown` `rateGlottis` `rateTenseness` `rateTongue` `rateLips` `rateVelum` |
 | pitch drift | `vibFadeRate` `wobbleSlowHz` `wobbleFastHz` `wobbleSlowCents` `wobbleFastCents` |
+| lips: the whistle | `breathPressure` (Pa at breath 1, default 1000) `jetLength` (cm, the pucker's depth, 0.35) `jetGain` (**ms**, 0.1) |
 
 **Almost nothing is limited.** A value that sounds broken is yours to find: a
 breath of 3, a throat of 0.2, a rate of a million, a velum resting wide open
@@ -245,6 +256,7 @@ until the voice is rebuilt:
 | `aspirationQ` `fricationQ` | ≥ 1e-6 | its coefficients divide by zero |
 | `glottalReflection` `lipReflection` `damp` | −1 … 1, either sign | the pipe gains energy every round trip |
 | `burstHalfLife` | ≥ 0 | a click grows instead of dying |
+| `breathPressure` | ≥ 0 | the jet's speed is the root of a negative pressure |
 
 A NaN in any field falls back to its default, and `setTenseness` floors at 0
 (the voicing gain is a root of it). A rate of 0 or less is a jump. Even with
@@ -267,6 +279,74 @@ the tube. First levers, by symptom:
 - *mushy consonants* — `diction`; table `holdMs`.
 - *sluggish vowels* — `rateTongue`.
 - *no voice bar in B D G* — raise `kVelumShut` (it is what leaks).
+- *a whistle buzzy or bright* — lower `jetGain`; *will not start* — raise it or
+  `breathPressure`; *locks on the wrong mode, or only at some pitches* —
+  `jetLength`; *too much hiss under the tone* — `turbulenceGain`. Re-run
+  `wptool whistle fit` after any of them.
+
+## Whistling
+
+A whistle is the other source, at the other end of the same pipe. The air
+through the folds, the tract and the lips is Bernoulli through three orifices
+in series: voiced, the folds are the narrowest and the jet at the lips is slow
+and inert; folds open and lips puckered, the pressure drops at the lips and the
+jet is fast. The lips' own air, moving with the front cavity's ring, nudges the
+jet; the nudge rides it for a transit and arrives as more or less air, and when
+the transit matches the ring the loop locks. Pitch is the cavity's, set by the
+tongue, the pucker and a slot behind it; loudness is the jet's.
+
+Two ways to whistle:
+
+```cpp
+// a pose, by hand
+voice.setGlottis(1);  voice.setVelum(0);
+voice.setTongue(0.9f, 0.6f);  voice.setLips(0.3f);
+voice.setBreath(0.8f);                      // ~1250 Hz at N = 22
+
+// a note, through the table
+voice.whistle(84, 0.8f);                    // C6, at breath 0.8
+voice.whistle(89, 0.8f);                    // the tongue eases: a slide
+voice.noteOff();                            // ends it as it ends a note
+```
+
+`whistle(midi, breath)` is one call that writes targets like any other — pitch
+(the asked note, read back as `midi`), folds open, velum shut, tongue, pucker,
+slot 0 or none, slot 1 cleared, breath. The last writer still wins, per
+channel. `whistle()` ends any words in flight: a `sing()` not yet started is
+dropped, one playing is abandoned, and the phoneme readback clears. The table (`wp_vocab.cpp`) has one pose
+per semitone from midi 77 to 95 (F5 to B6, 698 to 1976 Hz), each within 21
+cents at N = 22 and breath 0.8; a fraction of a semitone interpolates the two
+neighbouring rows.
+
+- **The fold.** A note outside the range folds into it by octaves, then
+  clamps: a sung C3 (48) whistles C6 (84), as a whistler would.
+  `whistleRange(lo, hi)` says where the table sits for this voice.
+- **The size shift.** The table was fitted at N = 22. A voice of N sections
+  looks its note up at `midi + 12 log2(N / 22)`: every mode scales with 1/N, so
+  the pose that whistles that higher note at 22 whistles this one at N. The
+  jet's transit does not scale (see *Known limits*).
+- **Pitch rises with breath.** A faster jet is a shorter transit. From breath
+  0.5 to 1.0 a row rises 34 to 144 cents, most at the bottom of the range. Rows
+  77, 94 and 95 do not lock at breath 0.5; everything locks at 0.8.
+- **The folds stay open.** `whistle` opens them, and a bare `noteOn` after it
+  does not close them: a whispered note is legal. A score commit does (it rests
+  the glottis and clears both slots), and so do `stop()` and `setGlottis(0)`.
+- **Words and whistles are exclusive.** A pucker has no room for consonants,
+  and a slot at the lips is a slit, which breaks the jet: `whistle()` ends any
+  words in flight, and a `sing()` after it voices again.
+
+The table comes from `wptool whistle fit` (about 10 s on a laptop): a grid of
+57960 poses (tongue 23 × 21, pucker lipD 0.2 to 0.9 in 11 steps, no slot or
+one at 0.75 to 0.90 × three degrees), screened for a lip mode in the whistle
+band, rendered at breath 0.8 and measured the way `wptool whistle` measures:
+a lock is periodicity above 0.95 and `whistle` above 0.5 after 300 ms, and
+the pitch is the measured `whistleHz`, not the lip mode. Every lock is also
+rendered at breath 0.5 and 1.0 and at N = 16 and 26. A Viterbi pass picks one
+pose per semitone, trading cents, the lock's distance from its own lip mode, a
+lock lost at 0.5 or 1.0 and the error at the other sizes against pose jumps
+and slot flips between neighbours. It prints the block for `wp_vocab.cpp`,
+each row with its measured Hz, cents and drift. Re-run it after touching the
+anatomy, the tube, the jet or the whistle tunables.
 
 ## Where this departs from the plan, and why
 
@@ -306,6 +386,33 @@ Each of these is commented at the site.
 10. **"Last writer wins" is exact**, via a caller-side sequence number (it was
     the one place a race on the Teensy could change what you hear).
 
+The whistle departs from its own plan (`wind_pipe-whistle.md`) here, each
+measured:
+
+11. **The jet is nudged by the lips' air velocity, not its displacement**
+    (whistle plan §1, §3): the displacement's 1/f tilt locked every pose at
+    80 to 200 Hz, far under its lip mode.
+12. **The drive enters as a pressure difference across the last section**
+    (`Tube::injectFlow`, a dipole), not a volume source (§3): the open end
+    shorts a volume source and it barely rang the front cavity.
+13. **The drive opposes the nudge** (§3): it locks on the lip mode at three
+    times as many poses. The sign is folded into `Jet::setGain`.
+14. **The nudge is lowpassed at 3 kHz** (`kJetLowpassHz`, §3): without it the
+    lip channel's own 7 to 9 kHz mode locked first, and F and TH whistled.
+15. **Pulsing folds carry no jet** (§2): `jetFlow` is gated by the voicing
+    gate's complement; without it a sung UW whistled 17 dB under its vowel.
+16. **The slit rule** (§2): a slot cut deeper than the pucker inside the lip
+    sections breaks the jet, so F, TH and S never whistle; a slot behind the
+    lips shortens the front cavity.
+17. **`jetGain` is in milliseconds** (default 0.1), not a dimensionless ~20
+    (§5): the gain on a velocity is a time.
+18. **`whistle` is weighted by how well the period holds** (§4): a swing forced
+    by hiss or a voice is not a whistle; without the weight a sung line read
+    up to 0.5.
+19. **The fit costs robustness, not only cents** (§7.2): a lock lost at breath
+    0.5 or 1.0 and the error at N = 16 and 26 join the cost. Without them most
+    rows sat at their threshold, locked only near 0.8 and failed at N = 16.
+
 ## Known limits
 
 - **Sibilants are approximations.** S sits near 6 kHz and SH near 2 kHz, which
@@ -324,6 +431,18 @@ Each of these is commented at the site.
 - **Voice size is quantized** in steps of ~4.5 % (one section); nothing between.
 - **One score is 256 events** — a line at a time.
 - **The tongue body cannot close or hiss**; only the two slots and the lips can.
+- **A 1D tube has no teeth.** The slit rule stands in: a consonant slot at
+  the lips never whistles, a pucker does.
+- **The jet's transit does not scale with size.** It is physical (a length
+  over a speed), while every mode scales with 1/N. At N = 16 and 26 the table's
+  rows land within 136 cents of their note rather than 21, and the jet's reach
+  in hertz stays put: at 16 the top two rows (past 2.5 kHz) do not lock or lock
+  on another mode, at 26 the bottom row (under 600 Hz) does not lock. The pose
+  whistle's lock threshold moves too: breath 0.3 at 22, 0.5 at 16, 0.2 at 26.
+- **The whistle's pitch follows breath**, up to 1.4 semitones from 0.5 to 1.0
+  at the bottom of the range. No ear corrects it (whistle plan §11).
+- **The whistle range is 18 semitones**, F5 to B6 at N = 22: nothing in the
+  pose grid locks above about 2 kHz or below about 700 Hz on the front cavity.
 - Not a self-oscillating fold model, not a 2D/3D tract.
 
 ## Credits
@@ -331,6 +450,13 @@ Each of these is commented at the site.
 The tube and the glottis are a float32 C++ port of
 [Pink Trombone](https://dood.al/pinktrombone/) by Neil Thapen (2017, MIT),
 vendored verbatim at `extras/reference/pinktrombone.html`; see `NOTICE`. Vowel
-targets are from Peterson & Barney (1952).
+targets are from Peterson & Barney (1952). The whistle's jet drive follows
+Fletcher and Rossing, *The Physics of Musical Instruments* (the flue jet, its
+0.4 convection, the tanh saturation); McIntyre, Schumacher and Woodhouse
+(1983), *On the oscillations of musical instruments* (a resonator coupled to a
+delayed nonlinearity); and Cook's STK `Flute` (the digital form and its loop
+filter). The front cavity as the whistle's resonator is from Shadle (1983),
+*Experiments on the acoustics of whistling*, and Wilson et al. (1971),
+*Experiments on the fluid mechanics of whistling*.
 
 MIT — see `LICENSE`.

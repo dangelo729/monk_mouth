@@ -18,7 +18,7 @@ float unit(Rng& r) { return 0.5f + 0.5f * r.bipolar(); }
 
 // one random gesture on the whole public surface
 void thrash(Voice& v, Rng& r) {
-    switch (r.next() % 16) {
+    switch (r.next() % 17) {
         case 0:  v.setBreath(unit(r) < 0.2f ? 0.0f : unit(r)); break;
         case 1:  v.setPitch(30.0f + 60.0f * unit(r)); break;
         case 2:  v.setGlottis(unit(r)); break;
@@ -34,6 +34,8 @@ void thrash(Voice& v, Rng& r) {
         case 12: v.setVibrato(8.0f * unit(r), 100.0f * unit(r), unit(r)); break;
         case 13: v.setWobble(unit(r)); break;
         case 14: v.noteOn(30.0f + 60.0f * unit(r), unit(r)); break;
+        case 15: v.setGlottis(1.0f); v.setVelum(0.0f); v.setLips(0.2f + 0.3f * unit(r));        // a whistle
+                 v.setTongue(0.6f + 0.4f * unit(r), 0.3f + 0.6f * unit(r)); v.setBreath(0.3f + unit(r)); break;
         default: v.noteOff(); break;
     }
 }
@@ -130,7 +132,8 @@ WP_TEST(voice_breath_off_reaches_exact_zero) {
 }
 
 // same seed, same calls -> identical bytes. and the block the caller renders in
-// does not matter: control runs every 128 samples inside the library.
+// does not matter: control runs every 128 samples inside the library. the
+// whistle's telemetry is as exact as the samples, and so is a held whistle.
 WP_TEST(voice_is_deterministic) {
     for (int n : kSizes) {
         auto run = [n](uint32_t seed, int chunk) {
@@ -142,6 +145,7 @@ WP_TEST(voice_is_deterministic) {
             for (int step = 0; step < 300; ++step) {
                 thrash(v, r);
                 if (step == 100) v.say("HH AH0 L OW1");
+                if (step == 200) { v.setGlottis(1.0f); v.setVelum(0.0f); v.setTongue(0.9f, 0.6f); v.setLips(0.3f); v.setBreath(0.8f); }
                 const long until = (long)(step + 1) * 1280;          // gestures land on block edges
                 while (rendered < until) {
                     const int m = (int)((until - rendered) < chunk ? (until - rendered) : chunk);
@@ -149,6 +153,8 @@ WP_TEST(voice_is_deterministic) {
                     out.insert(out.end(), buf.begin(), buf.begin() + m);
                     rendered += m;
                 }
+                out.push_back(v.state().whistle);                     // the telemetry, as exact as the sound
+                out.push_back(v.state().whistleHz);
             }
             return out;
         };
@@ -197,6 +203,44 @@ WP_TEST(voice_state_readback) {
     v.setConstriction(0, 0.82f, -1.0f);
     for (int i = 0; i < 40; ++i) v.render(buf, kBlock);
     CHECK(v.state().closed && v.state().slotActive[0]);
+    CHECK(v.state().whistle == 0.0f);                                // a voice is not a whistle
+
+    // a whistle: folds open, lips puckered. whistle near one, its pitch on the
+    // pose's lip mode; then voiced again, it falls back to nothing.
+    v.clearConstriction(0);
+    v.setGlottis(1.0f);
+    v.setVelum(0.0f);
+    v.setTongue(0.9f, 0.6f);
+    v.setLips(0.3f);
+    v.setBreath(0.8f);
+    for (int i = 0; i < 400; ++i) v.render(buf, kBlock);
+    const BodyState w = v.state();
+    CHECK_MSG(w.whistle > 0.9f, "whistle %.3f", w.whistle);
+    float dw[kMaxSections];
+    const int count = v.diameters(dw, kMaxSections);
+    double mode = 0.0;
+    for (double m : whistleModes(count, dw, kVelumShut)) if (mode == 0.0 || std::fabs(m - w.whistleHz) < std::fabs(mode - w.whistleHz)) mode = m;
+    CHECK_MSG(mode > 0.0 && std::fabs(w.whistleHz / mode - 1.0) < 0.05, "whistleHz %.1f, lip mode %.1f", w.whistleHz, mode);
+    CHECK(w.glottis > 0.99f && w.voicing == 0.0f);
+    v.setGlottis(0.0f);
+    for (int i = 0; i < 100; ++i) v.render(buf, kBlock);
+    CHECK_MSG(v.state().whistle < 0.05f && v.state().voicing > 0.5f, "voiced again: whistle %.3f", v.state().whistle);
+    const float held = v.state().whistleHz;                          // the dying whistle's last pitch, held
+    for (int i = 0; i < 100; ++i) v.render(buf, kBlock);
+    CHECK_MSG(v.state().whistleHz == held && held > 2.0f * v.state().f0, "held %.1f then %.1f, f0 %.1f", held,
+              v.state().whistleHz, v.state().f0);
+
+    // whistle(): the phoneme a syllable left reads none, the note reads as
+    // asked, whistling; then a stop voices again
+    CHECK(v.syllable("AA"));
+    for (int i = 0; i < 100; ++i) v.render(buf, kBlock);
+    CHECK(v.state().phoneme == ph::AA);
+    v.whistle(86.0f, 0.8f);
+    for (int i = 0; i < 400; ++i) v.render(buf, kBlock);
+    const BodyState ws = v.state();
+    CHECK_MSG(ws.phoneme == ph::none, "phoneme %s during a whistle", phoneName(ws.phoneme));
+    CHECK_MSG(std::fabs(ws.midi - 86.0f) < 0.01f, "midi %.3f", ws.midi);
+    CHECK_MSG(ws.whistle > 0.5f && ws.glottis > 0.99f && ws.voicing == 0.0f, "whistle %.3f glottis %.3f", ws.whistle, ws.glottis);
 }
 
 // a target set between blocks lands at the top of the next block, for everything.

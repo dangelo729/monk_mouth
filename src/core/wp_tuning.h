@@ -66,6 +66,11 @@ struct Tuning {
     float wobbleFastHz      = 4.0f;     // the flutter's speed; tens of Hz is per-period jitter
     float wobbleSlowCents   = 30.0f;    // the slow drift's depth at wobble = 1
     float wobbleFastCents   = 10.0f;    // the flutter's depth at wobble = 1
+
+    // ---- lips: the whistle (whistle plan §5) ----------------------------------------
+    float breathPressure    = 1000.0f;  // Pa, lung pressure at breath 1: the jet's speed. only the jet reads it
+    float jetLength         = 0.35f;    // cm, the pucker's depth: the jet's transit, which pitches lock at which breath
+    float jetGain           = 0.1f;     // ms, how hard the jet amplifies a nudge: the lock threshold and the drive
 };
 
 // the few fields that have a limit, held inside it; a NaN falls back to the

@@ -1,4 +1,4 @@
-// wind_pipe — wp_voice.cpp  (plan §7)
+// wind_pipe — wp_voice.cpp  (plan §7; whistle plan §3, §4, §6)
 #include "wp_voice.h"
 
 namespace wp {
@@ -7,10 +7,14 @@ Voice::Voice(int sections, uint32_t seed, float sampleRate)
     : fs_(sampleRate > 1000.0f ? sampleRate : kDefaultFs), tube_(sections) {
     rng_.seed(seed);
     glottis_.init(fs_);
+    jet_.init(fs_);
     noise_.init(fs_);
     body_.init(tube_.sections(), fs_);
     pitch_.init(fs_, kDefaultMidi);
     retune(tuning_);                                      // the defaults
+    // the table was fitted at kDefaultSections: every mode of a voice N long
+    // scales by kDefaultSections / N, so its note sits this far up the table
+    whistleShift_ = 12.0f * std::log2((float)tube_.sections() / (float)kDefaultSections);
     for (int i = 0; i < kMaxSections; ++i) stateDiameters_[i] = 0.0f;
     publish();
 }
@@ -63,6 +67,36 @@ void Voice::noteOn(float midi, float vel01) {
     write(kChNoteOn, 0.0f);
 }
 void Voice::noteOff() { write(kChBreath, 0.0f); }
+
+// the table's note for this one (whistle plan §6): shifted by the voice's
+// size, folded into the table's range by octaves, then clamped. the pitch
+// channel keeps the asked note; the folds open, the velum shuts. whistle()
+// ends any words in flight: a commit not yet taken is dropped, and a score
+// playing is abandoned and the phoneme readback cleared, written first so it
+// lands ahead of the whistle's own targets.
+void Voice::whistle(float midi, float breath) {
+    player_.withdraw();
+    write(kChAbandon, 0.0f);
+    const float lo = (float)kWhistleMidiLo, hi = (float)(kWhistleMidiLo + kWhistleCount - 1);
+    float m = midi + whistleShift_;
+    if (m < lo) m += 12.0f * std::ceil((lo - m) / 12.0f);
+    else if (m > hi) m -= 12.0f * std::ceil((m - hi) / 12.0f);
+    const WhistlePose p = whistlePose(m);                 // clamps, and a NaN lands on the first row
+    setPitch(midi);
+    setGlottis(1.0f);
+    setVelum(0.0f);
+    write(kChTongue, p.tongueX, p.tongueD);
+    write(kChLips, p.lipD);
+    if (p.slotPlace >= 0.0f) write(kChSlot0, p.slotPlace, p.slotDegree);
+    else clearConstriction(0);
+    clearConstriction(1);
+    setBreath(breath);
+}
+
+void Voice::whistleRange(float& lo, float& hi) const {
+    lo = (float)kWhistleMidiLo - whistleShift_;
+    hi = (float)(kWhistleMidiLo + kWhistleCount - 1) - whistleShift_;
+}
 
 // ---- words -------------------------------------------------------------------------------------------
 // the compiler runs here, caller-side, into a scratch list; only a good score
@@ -164,6 +198,8 @@ void Voice::apply(uint8_t ch, float a, float b, float rate) {
             body_.setBreath(0.0f);
             phoneme_ = ph::none;
             break;
+        case kChPhone:        phoneme_ = ph::none; break;  // a live write clears the readback; a score's tag lands after
+        case kChAbandon:      player_.abandon(); phoneme_ = ph::none; break;
         default: break;
     }
 }
@@ -193,6 +229,7 @@ void Voice::retune(const Tuning& t) {
     noise_.retune(fs_, t);
     body_.retune(t);
     pitch_.retune(t);
+    jet_.setGain(t.jetGain);
     noiseFloor_ = t.noiseVoicedFloor;
     noisePulse_ = t.noiseVoicedPulse;
     noiseUnvoiced_ = t.noiseUnvoiced;
@@ -246,9 +283,11 @@ void Voice::control() {
         turbFrac_[j] = f.turbFrac[j];
     }
     voicedness_ = f.voicedness;
+    jet_.set(f.jetFlow, f.jetDelay, f.jetHalfWidth, f.lipArea);
 }
 
 void Voice::renderRun(float* out, int n) {
+    const int last = tube_.sections() - 1;
     for (int i = 0; i < n; ++i) {
         voicing_ += dVoicing_;
         asp_ += dAsp_;
@@ -270,6 +309,7 @@ void Voice::renderRun(float* out, int n) {
             tube_.inject(turbB_[j], v * turbFrac_[j]);
         }
         body_.stepTransients(tube_);                      // bursts
+        tube_.injectFlow(last, jet_.step(tube_.flow(last)));   // the jet, fed by the lips' own flow
 
         float y = tube_.step(source);
         if (useHalfband_) y = halfband_.process(y);
@@ -279,6 +319,7 @@ void Voice::renderRun(float* out, int n) {
 
 void Voice::endBlock() {
     player_.endBlock();
+    jet_.endBlock();
 
     // the silence gate: no breath, nothing ringing -> zero the wave state.
     // real silence, and no denormals.
@@ -288,6 +329,7 @@ void Voice::endBlock() {
         tube_.reset();
         halfband_.reset();
         noise_.reset();
+        jet_.reset();
         body_.killTransients();
     }
     publish();
@@ -315,6 +357,8 @@ void Voice::publish() {
     state_.closed = body_.closed();
     state_.busy = player_.busy();
     state_.phoneme = phoneme_;
+    state_.whistle = jet_.whistle();
+    state_.whistleHz = jet_.whistleHz();
     const float* d = body_.diameters();
     for (int i = 0; i < body_.sections(); ++i) stateDiameters_[i] = d[i];
 }
