@@ -1,0 +1,16 @@
+# Twinkle, twinkle, little star / how I wonder what you are
+# phones midi ms   ("-" = melisma, "_" = rest)
+T W IH NG   48 400
+K AH L      48 400
+T W IH NG   55 400
+K AH L      55 400
+L IH        57 400
+T AH L      57 400
+S T AA R    55 800
+HH AW       53 400
+AY          53 400
+W AH N      52 400
+D ER        52 400
+W AH T      50 400
+Y UW        50 400
+AA R        48 900

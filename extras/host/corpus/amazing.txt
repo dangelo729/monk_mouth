@@ -1,0 +1,10 @@
+# Amazing grace, how sweet the sound
+AH          50 500
+M EY        55 1000
+Z IH NG     59 300
+-           55 200
+G R EY S    59 1000
+HH AW       57 500
+S W IY T    55 1000
+DH AH       52 500
+S AW N D    50 1500

@@ -1,0 +1,11 @@
+# Row, row, row your boat / gently down the stream
+R OW        48 600
+R OW        48 600
+R OW        48 450
+Y AO R      50 150
+B OW T      52 600
+JH EH N T   52 450
+L IY        50 150
+D AW N      52 450
+DH AH       53 150
+S T R IY M  55 1200

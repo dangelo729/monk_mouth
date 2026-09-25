@@ -1,0 +1,12 @@
+# one syllable up a scale and another down it: melisma, glide, vibrato
+L AA        48 400
+-           50 400
+-           52 400
+-           53 400
+-           55 1400
+_           0  300
+N OW        55 400
+-           53 400
+-           52 400
+-           50 400
+-           48 1400

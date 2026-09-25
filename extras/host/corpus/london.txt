@@ -1,0 +1,8 @@
+# London Bridge is falling down
+L AH N      55 450
+D AH N      57 150
+B R IH JH   55 300
+IH Z        53 300
+F AO        52 300
+L IH NG     53 300
+D AW N      55 800

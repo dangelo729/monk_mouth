@@ -1,0 +1,11 @@
+# Daisy, Daisy, give me your answer do
+D EY        62 900
+Z IY        59 900
+D EY        55 900
+Z IY        50 900
+G IH V      52 300
+M IY        54 300
+Y AO R      55 300
+AE N        52 600
+S ER        55 300
+D UW        50 1500

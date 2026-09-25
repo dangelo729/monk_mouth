@@ -1,0 +1,94 @@
+wind_pipe — NOTICE
+Third-party attributions and data provenance.
+
+wind_pipe itself is licensed under the MIT License (see LICENSE).
+
+--------------------------------------------------------------------------
+1. Pink Trombone (port basis)
+--------------------------------------------------------------------------
+The tube and the glottis of wind_pipe are a float32 C++ port of Pink
+Trombone, "bare-handed procedural speech synthesis", version 1.1, March 2017,
+by Neil Thapen:
+
+    https://dood.al/pinktrombone/
+
+What is ported:
+
+  - the tube (src/core/wp_tube.*): the Kelly-Lochbaum waveguide of
+    Tract.runStep — junction scattering, the glottal and lip reflections,
+    the fixed-profile nose branch and its three-port junction, and the
+    reflection-coefficient interpolation — run here at 22 sections x 1 step
+    per sample instead of the reference's 44 x 2.
+  - the glottis (src/core/wp_glottis.*): the Liljencrants-Fant pulse set-up
+    of Glottis.setupWaveform, line for line, and the noise modulator of
+    Glottis.getNoiseModulator (src/core/wp_noise.h).
+  - the anatomy (src/core/wp_body.*): the tongue curve of
+    TractUI.setRestDiameter, the constriction shape of TractUI.handleTouches,
+    the throat / lip / velum landmarks, the release transient of
+    Tract.addTransient and the turbulence window of
+    Tract.addTurbulenceNoiseAtIndex, all re-expressed as fractions of tract
+    length.
+  - the vowel pose seeds in src/core/wp_vocab.cpp were read from the labels
+    of TractUI.drawPositions.
+
+Everything else — the body's dynamics, the pitch axis, the vocabulary's
+tuning, the score compiler and player, the Teensy wrapper — is not from
+Pink Trombone, and nothing is ported from anywhere else.
+
+Pink Trombone's single HTML file is vendored VERBATIM, with its license, at
+extras/reference/pinktrombone.html, and is the port bible: every Pink
+Trombone constant in the source was read from it. Its license notice is
+reproduced in full below, as required:
+
+    Copyright 2017 Neil Thapen
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+    IN THE SOFTWARE.
+
+Pink Trombone's own bibliography, which is therefore this library's too:
+
+  - Julius O. Smith III, "Physical audio signal processing for virtual
+    musical instruments and audio effects."
+    https://ccrma.stanford.edu/~jos/pasp/
+  - Story, Brad H. "A parametric model of the vocal tract area function for
+    vowel and consonant simulation." The Journal of the Acoustical Society
+    of America 117.5 (2005): 3231-3254.
+  - Lu, Hui-Ling, and J. O. Smith. "Glottal source modeling for singing
+    voice synthesis." Proceedings of the 2000 International Computer Music
+    Conference. 2000.
+  - Mullen, Jack. Physical modelling of the vocal tract with the 2D digital
+    waveguide mesh. PhD thesis, University of York, 2006.
+
+--------------------------------------------------------------------------
+2. Peterson & Barney (1952) vowel formants (data provenance)
+--------------------------------------------------------------------------
+The vowel targets that `wptool fit` searches against (kFormantTargets in
+src/core/wp_vocab.cpp) are the adult-male mean F1 / F2 (and F3 for ER)
+values published in:
+
+  - Peterson, G. E., & Barney, H. L. (1952). "Control methods used in a
+    study of the vowels." Journal of the Acoustical Society of America,
+    24(2), 175-184.
+
+Only the published table values are used, as specification data.
+
+--------------------------------------------------------------------------
+3. ARPABET
+--------------------------------------------------------------------------
+Phoneme names follow the ARPABET symbol set as used by the CMU Pronouncing
+Dictionary. No dictionary data is included.

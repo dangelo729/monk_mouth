@@ -1,0 +1,70 @@
+#######################################
+# Syntax coloring map for WindPipe
+# (fields are TAB-separated — required)
+#######################################
+
+#######################################
+# Datatypes / classes (KEYWORD1)
+#######################################
+
+AudioSynthWindPipe	KEYWORD1
+WindPipe	KEYWORD1
+Voice	KEYWORD1
+Syllable	KEYWORD1
+BodyState	KEYWORD1
+Tuning	KEYWORD1
+VowelPose	KEYWORD1
+Consonant	KEYWORD1
+Pose	KEYWORD1
+
+#######################################
+# Methods and functions (KEYWORD2)
+#######################################
+
+setBreath	KEYWORD2
+setPitch	KEYWORD2
+setGlottis	KEYWORD2
+setTenseness	KEYWORD2
+setTongue	KEYWORD2
+setLips	KEYWORD2
+setVelum	KEYWORD2
+setConstriction	KEYWORD2
+clearConstriction	KEYWORD2
+setGlide	KEYWORD2
+setVibrato	KEYWORD2
+setWobble	KEYWORD2
+setTuning	KEYWORD2
+tuning	KEYWORD2
+noteOn	KEYWORD2
+noteOff	KEYWORD2
+syllable	KEYWORD2
+sing	KEYWORD2
+say	KEYWORD2
+stop	KEYWORD2
+busy	KEYWORD2
+state	KEYWORD2
+diameters	KEYWORD2
+sections	KEYWORD2
+setHalfband	KEYWORD2
+render	KEYWORD2
+latch	KEYWORD2
+vowel	KEYWORD2
+consonant	KEYWORD2
+phoneName	KEYWORD2
+parsePhone	KEYWORD2
+
+#######################################
+# Constants and namespaces (LITERAL1)
+#######################################
+
+wp	LITERAL1
+ph	LITERAL1
+kDefaultSections	LITERAL1
+kMinSections	LITERAL1
+kMaxSections	LITERAL1
+kTongueXMin	LITERAL1
+kTongueXMax	LITERAL1
+kTongueDMin	LITERAL1
+kTongueDMax	LITERAL1
+kLipDMax	LITERAL1
+kMaxEvents	LITERAL1
