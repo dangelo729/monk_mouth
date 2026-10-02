@@ -16,9 +16,9 @@ namespace wp {
 constexpr int   kBlock           = 128;     // control block, samples (2.9 ms)
 constexpr float kInvBlock        = 1.0f / 128.0f;
 constexpr float kDefaultFs       = 44100.0f;
-// a voice takes any size between these two, and neither is acoustic: the nose
-// junction joins two sections, and the arrays have to be some size. 16 to 26
-// (12.7 to 20.6 cm) are human throats.
+// a voice takes any size between these two, whole or not, and neither is
+// acoustic: the nose junction joins two sections, and the arrays have to be
+// some size. 16 to 26 (12.7 to 20.6 cm) are human throats.
 constexpr int   kMinSections     = 2;
 constexpr int   kMaxSections     = 64;      // 50.8 cm
 constexpr int   kDefaultSections = 22;      // 17.5 cm, adult male
@@ -47,6 +47,7 @@ constexpr float kTongueXMax = 29.0f / 44.0f;   // 0.659
 constexpr float kTongueDMin = 2.05f;           // the tongue at its highest
 constexpr float kTongueDMax = 3.5f;
 constexpr float kLipDMax    = 1.5f;
+constexpr float kLipRoundD  = 0.45f;           // every vowel's lips at lipRound 1: UW's, the roundest
 constexpr float kLipPlace   = 41.5f / 44.0f;   // centre of the lip region
 // the reference shuts the velum to 0.01. a velar closure sits downstream of the
 // nose junction, and through 0.01 a voiced G leaks to within 38 dB of its vowel —

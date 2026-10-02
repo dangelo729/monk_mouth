@@ -9,11 +9,19 @@ namespace wp {
 // anatomy
 // ============================================================================
 
-// region tests on section centres, exact in integers. the centre of section i
-// of n is (2i+1)/(2n), and at n = 22 it lands exactly on the reference's odd
-// landmarks (7, 17, 39 of 44) — a float compare there would be a coin toss.
-//   centre >= l44/44   <=>   (2i+1) * 22 >= n * l44
-static inline bool atOrPast(int i, int n, int l44) { return (2 * i + 1) * 22 >= n * l44; }
+// how far a section whose centre sits `centre` sections from the glottis is
+// past landmark l44/44 of a tract `length` long, 0 .. 1: the share of its own
+// span past it. the reference's regions begin at 7, 10, 12 and 39 of 44 and
+// hold a section whose centre is at or past the landmark, which at its own
+// n = 22 — a centre on 7 and on 39 — draws them from 6 and 38 instead. these
+// are its regions as drawn there, so every size is 22's anatomy to scale, and
+// at 22 — every product here exact — each section is wholly one side.
+static inline float past(float centre, float length, int l44) {
+    return clampf(centre - length * (float)l44 / 44.0f + 0.5f, 0.0f, 1.0f);
+}
+
+// a to b by w, and exactly a or b at either end
+static inline float blend(float a, float b, float w) { return w <= 0.0f ? a : (w >= 1.0f ? b : a + (b - a) * w); }
 
 // the reference softens the tongue curve on sections 10, 37 and 38 of 44
 // (x0.94, x0.94, x0.8). as a function of position: piecewise linear through
@@ -38,27 +46,36 @@ static float slotWidth(float place) {
     return lerpf(wide, narrow, (place - back) / (front - back));
 }
 
-void shapeTract(const Pose& pose, int n, float* d, int* slotEnd, float* slotBaseMax, const Tuning& tuning) {
+void shapeTract(const Pose& pose, float length, float* d, int* slotEnd, float* slotBaseMax, const Tuning& tuning,
+                float* ends) {
+    shapeTract(pose, layoutFor(length), d, slotEnd, slotBaseMax, tuning, ends);
+}
+
+void shapeTract(const Pose& pose, const Layout& at, float* d, int* slotEnd, float* slotBaseMax, const Tuning& tuning,
+                float* ends) {
     const float pi = 3.14159265358979f;
     const float fixedTongue = 2.0f + (pose.tongueD - 2.0f) / 1.5f;
     const float lipD = clampf(pose.lipD, 0.0f, kLipDMax);
+    const int n = at.n;
+    const float length = at.length;
 
-    for (int i = 0; i < n; ++i) {
-        const float x = ((float)i + 0.5f) / (float)n;
-        float di;
-        if (atOrPast(i, n, 10) && !atOrPast(i, n, 39)) {          // tongue
+    // the sections, and a section's worth past either end — where the ends'
+    // pieces sit — in one row: all[i + 1] is section i, from -1 to n
+    float all[kMaxSections + 2];
+    for (int i = -1; i <= n; ++i) {
+        const float c = at.centre(i);
+        const float x = c / length;
+        // throat, then the upper throat from 6/44, open from 12/44 — and the
+        // tongue over all of it from 10/44 to 38/44
+        float di = blend(blend(tuning.throatD, tuning.throatUpperD, past(c, length, 6)), 1.5f, past(c, length, 12));
+        const float tongue = past(c, length, 10) * (1.0f - past(c, length, 38));
+        if (tongue > 0.0f) {
             const float t = 1.1f * pi * (pose.tongueX - x) / 0.5f;
             const float curve = (3.2f - fixedTongue) * std::cos(t) * tongueSoften(x);
-            di = 1.5f - curve;
-        } else if (!atOrPast(i, n, 7)) {                          // throat
-            di = tuning.throatD;
-        } else if (!atOrPast(i, n, 12)) {
-            di = tuning.throatUpperD;
-        } else {
-            di = 1.5f;
+            di = blend(di, 1.5f - curve, tongue);
         }
-        if (atOrPast(i, n, 39) && lipD < di) di = lipD;           // lips
-        d[i] = di;
+        if (lipD < di) di = blend(di, lipD, past(c, length, 38));   // lips
+        all[i + 1] = di;
     }
 
     // the two free constrictions, over whatever the tongue and lips left
@@ -69,26 +86,32 @@ void shapeTract(const Pose& pose, int n, float* d, int* slotEnd, float* slotBase
         if (!s.active) continue;
         const float degree = s.degree > 0.0f ? s.degree : 0.0f;
         const float width = slotWidth(s.place);
-        const float halfSection = 0.5f / (float)n;
-        for (int i = 0; i < n; ++i) {
-            const float x = ((float)i + 0.5f) / (float)n;
+        const float halfSection = 0.5f / length;
+        for (int i = -1; i <= n; ++i) {
+            float& di = all[i + 1];
+            const bool section = i >= 0 && i < n;
+            const float x = at.centre(i) / length;
             const float rel = std::fabs(x - s.place) - halfSection;
             if (rel > width) continue;
-            if (slotBaseMax && d[i] > slotBaseMax[j]) slotBaseMax[j] = d[i];
-            if (degree >= d[i]) continue;
+            if (section && slotBaseMax && di > slotBaseMax[j]) slotBaseMax[j] = di;
+            if (degree >= di) continue;
             const float shrink = rel <= 0.0f ? 0.0f : 0.5f * (1.0f - std::cos(pi * rel / width));
-            d[i] = degree + (d[i] - degree) * shrink;
-            if (slotEnd) slotEnd[j] = i;                          // walking toward the lips: the last one wins
+            di = degree + (di - degree) * shrink;
+            if (section && slotEnd) slotEnd[j] = i;               // walking toward the lips: the last one wins
         }
     }
+
+    for (int i = 0; i < n; ++i) d[i] = all[i + 1];
+    if (ends) { ends[0] = all[0]; ends[1] = all[n + 1]; }
 }
 
 // ============================================================================
 // dynamics
 // ============================================================================
 
-void Body::init(int sections, float fs, const Tuning& t) {
-    n_ = sections < kMinSections ? kMinSections : (sections > kMaxSections ? kMaxSections : sections);
+void Body::init(float sections, float fs, const Tuning& t) {
+    at_ = layoutFor(sections);
+    n_ = at_.n;
     fs_ = fs;
     dt_ = (float)kBlock / fs;
 
@@ -97,6 +120,8 @@ void Body::init(int sections, float fs, const Tuning& t) {
     breath_.init(0.0f);
     breath_.target = kBreathAim;
     glottisAsk_ = velumAsk_ = 0.0f;
+    lipsAsk_ = kLipDMax;
+    lipsVowel_ = false;
     glottis_.init(glottisTarget());
     tense_.init(kDefaultTenseness);
     tongueX_.init(pose_.tongueX);
@@ -109,7 +134,7 @@ void Body::init(int sections, float fs, const Tuning& t) {
         slot_[j].place.init(0.8f);
     }
 
-    shapeTract(pose_, n_, d_, nullptr, nullptr, t);
+    shapeTract(pose_, at_, d_, nullptr, nullptr, t, ends_);
     for (int j = 0; j < kSources; ++j) prevSource_[j] = 10.0f;
     prevSource_[kLipSource] = kLipDMax;
     pressure_ = hiss_ = 0.0f;
@@ -139,7 +164,22 @@ void Body::retune(const Tuning& t) {
     }
     glottis_.target = glottisTarget();                            // the same asks, from the new rests
     velum_.target = velumTarget();
+    lips_.target = lipsTarget();                                  // a vowel's lips, held the new way
     burstDecay_ = std::exp2(-1.0f / (t.burstHalfLife * fs_));
+}
+
+// the pose is fractions of the tract, so it stands as it is: the diameters
+// are that pose over the new sections, and a burst still ringing moves to
+// the section at its place.
+void Body::resize(float sections) {
+    const Layout from = at_;
+    at_ = layoutFor(sections);
+    if (at_.length == from.length) return;
+    n_ = at_.n;
+    for (Transient& t : pool_) {
+        if (t.life > 0) t.section = sectionAt(from.centre(t.section) / from.length);
+    }
+    shapeTract(pose_, at_, d_, nullptr, nullptr, t_, ends_);
 }
 
 void Body::setBreath(float p01, float rate) {
@@ -156,20 +196,33 @@ void Body::setTongue(float tongueX, float tongueD, float rate) {
     tongueX_.aim(clampf(tongueX, kTongueXMin, kTongueXMax), rate, dt_);
     tongueD_.aim(clampf(tongueD, kTongueDMin, kTongueDMax), rate, dt_);
 }
-void Body::setLips(float lipD, float rate) {
-    lips_.aim(lipD > 0.0f ? clampf(lipD, 0.0f, kLipDMax) : kClosureAim, rate, dt_);
+float vowelLips(float lipD, float lipRound) {
+    if (lipRound == 0.0f) return lipD;
+    const float to = lipRound > 0.0f ? kLipRoundD : kLipDMax;
+    return lipD * std::pow(to / lipD, std::fabs(lipRound));
+}
+
+void Body::setLips(float lipD, float rate, bool vowel) {
+    lipsAsk_ = lipD;
+    lipsVowel_ = vowel;
+    lips_.aim(lipsTarget(), rate, dt_);
+}
+float Body::lipsTarget() const {
+    if (lipsAsk_ <= 0.0f) return kClosureAim;
+    return clampf(lipsVowel_ ? vowelLips(lipsAsk_, t_.lipRound) : lipsAsk_, 0.0f, kLipDMax);
 }
 void Body::setVelum(float open01, float rate) {
     velumAsk_ = clampf(open01, 0.0f, 1.0f);
     velum_.aim(velumTarget(), rate, dt_);
 }
 
-float Body::diameterAt(float place) const {
-    int i = (int)(place * (float)n_);
-    if (i < 0) i = 0;
-    if (i > n_ - 1) i = n_ - 1;
-    return d_[i];
+// the section holding a place along the tract
+int Body::sectionAt(float place) const {
+    const int i = (int)std::floor(place * at_.length - at_.glottis);
+    return i < 0 ? 0 : (i > n_ - 1 ? n_ - 1 : i);
 }
+
+float Body::diameterAt(float place) const { return d_[sectionAt(place)]; }
 
 void Body::setConstriction(int slot, float place, float degree, float rate) {
     if (slot < 0 || slot > 1) return;
@@ -243,7 +296,7 @@ void Body::tick(Tube& tube) {
     }
     int end[2];
     float baseMax[2];
-    shapeTract(pose_, n_, d_, end, baseMax, t_);
+    shapeTract(pose_, at_, d_, end, baseMax, t_, ends_);
     for (int j = 0; j < 2; ++j) {
         SlotDyn& s = slot_[j];
         if (!s.active) continue;
@@ -253,7 +306,7 @@ void Body::tick(Tube& tube) {
             pose_.slot[j].active = false;
         }
     }
-    tube.setShape(d_, pose_.velumD);
+    tube.setShape(d_, pose_.velumD, ends_);
 
     // ---- watchers: the three sources -----------------------------------------------------
     // front: the first section past a source's narrowing, toward the lips —
@@ -265,8 +318,7 @@ void Body::tick(Tube& tube) {
         src[j] = slot_[j].active ? slot_[j].degree.x : 10.0f;
         place[j] = slot_[j].place.x;
         if (end[j] < 0) {                                         // narrowing nothing: its own place
-            const int i = (int)(place[j] * (float)n_);
-            front[j] = i < 0 ? 0 : (i > n_ - 1 ? n_ - 1 : i);
+            front[j] = sectionAt(place[j]);
         } else {
             front[j] = end[j] < n_ - 1 ? end[j] + 1 : n_ - 1;
         }
@@ -312,7 +364,7 @@ void Body::tick(Tube& tube) {
         frame_.turb[j] = g * flow;
 
         // the two sections downstream of the place, split by fractional index
-        const float index = place[j] * (float)n_ - 0.5f;
+        const float index = place[j] * at_.length - at_.glottis - 0.5f;
         int i = (int)std::floor(index);
         frame_.turbFrac[j] = index - (float)i;
         if (i < 0) i = 0;
@@ -334,12 +386,16 @@ void Body::tick(Tube& tube) {
     // the jet is slow; folds open and lips puckered, the pressure drops at the lips
     // and the jet is fast. areas are d² in cm², as the tube treats them.
     {
-        int lipStart = 0;
-        while (lipStart < n_ && !atOrPast(lipStart, n_, 39)) ++lipStart;
-        if (lipStart > n_ - 1) lipStart = n_ - 1;                 // too small for lips: the last section stands in
+        // the lips are the sections past 38/44, and a section on its way in
+        // counts for both sides in proportion — its area weighs less on the
+        // side it is leaving — so a narrowing crosses over as the size moves.
         float tract = 1e30f, lip = 1e30f;
-        for (int i = 0; i < lipStart; ++i) { const float a = d_[i] * d_[i]; if (a < tract) tract = a; }
-        for (int i = lipStart; i < n_; ++i) { const float a = d_[i] * d_[i]; if (a < lip) lip = a; }
+        for (int i = 0; i < n_; ++i) {
+            const float a = d_[i] * d_[i], w = past(at_.centre(i), at_.length, 38);
+            if (w < 1.0f && a / (1.0f - w) < tract) tract = a / (1.0f - w);
+            if (w > 0.0f && a / w < lip) lip = a / w;
+        }
+        if (lip >= 1e30f) lip = d_[n_ - 1] * d_[n_ - 1];         // too small for lips: the last section stands in
         const bool open = tract >= kJetMinArea && lip >= kJetMinArea;   // a closure anywhere stops the air
         float glottal = lerpf(kGlottisAreaShut, kGlottisAreaOpen, glottisOpen);
         if (glottal < kJetMinArea) glottal = kJetMinArea;

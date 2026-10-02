@@ -86,6 +86,7 @@ void setWobble(float amount01);
 // who is singing: every tunable at once (see Tuning)
 void   setTuning(const wp::Tuning& t);
 Tuning tuning() const;                  // the last one asked for, as held
+void   setSections(float sections);     // the size, live, whole or not (see Voice size)
 // conveniences
 void noteOn(float midi, float vel01);   // pitch + breath + vibrato onset
 void noteOff();                         // breath to 0
@@ -98,7 +99,7 @@ bool sing(const Syllable* syls, int n, float breath);   // at this breath; the v
 bool say(const char* phones);           // "HH AH0 L OW1 / W ER1 L D"
 void stop();   bool busy() const;
 // readback
-BodyState state() const;                // eased pose, f0, voicing, hiss, closed, phoneme, whistle, whistleHz
+BodyState state() const;                // eased pose, f0, vibrato, voicing, hiss, closed, phoneme, whistle, whistleHz
 int  diameters(float* out, int max) const;
 // the engine (wp::Voice only)
 void render(float* out, int n);
@@ -129,13 +130,31 @@ score holds 256 events (a CV syllable costs 5, a heavy one ~15), so a song
 goes in a line at a time: `sing()`, wait for `busy()` to fall, `sing()` again.
 Call them from the main loop, not an interrupt (≈ 10 KB of stack).
 
-**Voice size** is a section count given at construction: 22 = 17.5 cm (adult
+**Voice size** is in sections, given at construction: 22 = 17.5 cm (adult
 male), 19 ≈ 15 cm, 16 ≈ 12.7 cm; human throats run 16 to 26. Any size from 2
-to 64 is taken, and neither end is acoustic — the nose junction joins two
-sections, and the arrays have to be some size (`kMaxSections`; cost is linear
-in it). Poses mean the same thing at every size; formants scale with 1/N. The
-vowel orderings and the pose scaling are tested from 14 to 48, where the
-analysis's 120 – 5000 Hz window still sees every formant.
+to 64 is taken, whole or not, and neither end is acoustic — the nose junction
+joins two sections, and the arrays have to be some size (`kMaxSections`; cost
+is linear in it). Poses mean the same thing at every size; formants scale with
+1/N. The vowel orderings and the pose scaling are tested from 14 to 48, where
+the analysis's 120 – 5000 Hz window still sees every formant.
+
+A size between whole ones is laid out whole sections first
+(`wp_tube.h`'s `Layout`); what is left lives at the three open ends — the
+glottis, the lips, the nostrils — as a piece of a section, a round trip read
+between samples, as wide as the shape is there and joined to its end section by
+a junction that grows in with the piece. The nose joins and runs at the
+reference's ratios, sliding between one whole size's layout and the next. A
+whole size lays out exactly as it always has, and a piece that grows whole is
+exactly the section that appears there, so every part of the tube moves
+continuously with the size. A section at a region's edge (throat, tongue, lips)
+is in both regions by its share, 22's regions drawn to scale — formants follow
+1/N closely, not exactly.
+
+`setSections` changes the size live, like a tuning: it lands at the top of the
+next block. The pose stands and whatever is sounding carries on — a held note,
+a word, a whistle. A size moved a little at a time glides; a jump lands at
+once, the waves already in the pipe stretched over the new length. `sections()`
+is the last size asked for.
 
 ## The host rig
 
@@ -143,7 +162,7 @@ The rig lives in `extras/host`; the root `Makefile` forwards to it, so these
 work from either place.
 
 ```
-make test        # 75 tests: tube, glottis, body, voice, vocabulary, score, tuning, jet, whistle
+make test        # 80 tests: tube, glottis, body, voice, vocabulary, score, tuning, jet, whistle
 make tool        # extras/host/build/wptool
 make corpus      # every phoneme in three vowel contexts + the sung lines in
                  # extras/host/corpus/ -> extras/host/build/corpus/*.wav
@@ -236,8 +255,8 @@ voice.setTuning(t);             // lands whole at the top of the next block
 
 | | fields |
 |---|---|
-| larynx | `glottisRest` `aspirationGain` `aspirationHz` `aspirationQ` `noiseVoicedFloor` `noiseVoicedPulse` `noiseUnvoiced` |
-| pipe | `glottalReflection` `lipReflection` `damp` `throatD` `throatUpperD` `velumRest` |
+| larynx | `glottisRest` `growl` `aspirationGain` `aspirationHz` `aspirationQ` `noiseVoicedFloor` `noiseVoicedPulse` `noiseUnvoiced` |
+| pipe | `glottalReflection` `lipReflection` `damp` `throatD` `throatUpperD` `velumRest` `lipRound` `gain` |
 | consonants | `turbulenceGain` `fricationHz` `fricationQ` `voicedFrication` `burstGain` `burstHalfLife` `diction` |
 | motion | `rateBreathUp` `rateBreathDown` `rateGlottis` `rateTenseness` `rateTongue` `rateLips` `rateVelum` |
 | pitch drift | `vibFadeRate` `wobbleSlowHz` `wobbleFastHz` `wobbleSlowCents` `wobbleFastCents` |
@@ -261,10 +280,19 @@ until the voice is rebuilt:
 A NaN in any field falls back to its default, and `setTenseness` floors at 0
 (the voicing gain is a root of it). A rate of 0 or less is a jump. Even with
 all of these at their limits at once the voice is loud, finite, and sings
-again when handed the defaults. Three fields are behaviours of their own: `glottisRest` and `velumRest` make "0"
+again when handed the defaults. Five fields are behaviours of their own: `glottisRest` and `velumRest` make "0"
 mean this voice's rest, so a breathy or nasal singer stays one through every
-score; `diction` scales every consonant's close and release rate, and the
-score compiler's leads follow, so a crisper gesture still lands on the beat.
+score; `lipRound` is how the singer holds the lips on every vowel — toward 1
+each one pursed to UW's, toward −1 each one opened as wide as the lips go, a
+straight line on a log scale and on past either end — while a consonant's
+own lips, a whistle's and the `setLips` setter are left as asked, and a
+retune re-holds the vowel in the mouth; `diction` scales every consonant's
+close and release rate, and the score compiler's leads follow, so a crisper
+gesture still lands on the beat;
+`growl` makes every other glottal pulse `1 - growl` as strong, so an octave
+under the note joins the voice, and at 1 the note itself drops an octave.
+`gain` is the pipe's output level, ahead of the output clamp, 1 as built; a
+new one ramps across the one block it lands on, so a held note never steps.
 The throat moves formants and the vowel table was fitted against one throat,
 so `wptool throat` is the guide: it maps which throats keep both vowel gates
 at every human size. It is a map, not a limit.

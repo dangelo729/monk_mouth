@@ -156,8 +156,10 @@ struct Emitter {
     Span  nasal[kMaxSpans];     int nNasal = 0;
     bool  tooMany = false;
 
+    // restoreVowel: restoreLip is a vowel's lips (kLipsVowel), not the rest's
     void consonant(uint8_t phone, Timing t, int32_t floorTick,
-                   float restoreX, float restoreD, float restoreLip) {
+                   float restoreX, float restoreD, float restoreLip, bool restoreVowel) {
+        const float restoreTag = restoreVowel ? kLipsVowel : 0.0f;
         const Consonant& c = wp::consonant(phone);
         const int32_t set = t.set > floorTick ? t.set : floorTick;
         const int32_t mid = t.mid > set ? t.mid : set;
@@ -169,7 +171,7 @@ struct Emitter {
                 sink.put(set, kChTongue, g.tongueX, g.tongueD, kGlideMoveRate, phone);
                 sink.put(set, kChLips, g.lipD, 0.0f, kGlideMoveRate, 0);
                 sink.put(rel, kChTongue, restoreX, restoreD, kGlideMoveRate, 0);
-                sink.put(rel, kChLips, restoreLip, 0.0f, kGlideMoveRate, 0);
+                sink.put(rel, kChLips, restoreLip, restoreTag, kGlideMoveRate, 0);
                 break;
             }
             case kAspirate:
@@ -183,7 +185,7 @@ struct Emitter {
                 sink.put(rel, ch, kSlotClear, 0.0f, c.releaseRate * diction, 0);
                 if (c.lipD > 0.0f) {
                     sink.put(set, kChLips, c.lipD, 0.0f, 0.0f, 0);
-                    sink.put(rel, kChLips, restoreLip, 0.0f, 0.0f, 0);
+                    sink.put(rel, kChLips, restoreLip, restoreTag, 0.0f, 0);
                 }
                 break;
             }
@@ -328,7 +330,7 @@ int compile(PSyl* syl, int n, const ScoreOptions& opt, Event* out, int maxEvents
         const VowelPose* v = s.vowel ? &vowel(s.vowel) : nullptr;
         if (v) {
             sink.put(start, kChTongue, v->tongueX, v->tongueD, 0.0f, 0);
-            sink.put(start, kChLips, v->lipD, 0.0f, 0.0f, 0);
+            sink.put(start, kChLips, v->lipD, kLipsVowel, 0.0f, 0);
             lip = v->lipD; poseX = v->tongueX; poseD = v->tongueD; havePose = true;
         }
 
@@ -336,7 +338,7 @@ int compile(PSyl* syl, int n, const ScoreOptions& opt, Event* out, int maxEvents
         layout(s.onset, s.nOnset, scaleOn[k], beat[k], spms, diction, t);
         for (int i = 0; i < s.nOnset; ++i)
             em.consonant(s.onset[i], t[i], prevBeat, havePose ? poseX : vowel(ph::AH).tongueX,
-                         havePose ? poseD : vowel(ph::AH).tongueD, lip);
+                         havePose ? poseD : vowel(ph::AH).tongueD, lip, havePose);
 
         if (opt.pitchEvents && early) sink.put(beat[k], kChNoteOn, 0.0f, 0.0f, 0.0f, s.vowel);
         else if (opt.pitchEvents)     sink.put(beat[k], kChPitch, s.midi, 1.0f, 0.0f, s.vowel);
@@ -353,11 +355,11 @@ int compile(PSyl* syl, int n, const ScoreOptions& opt, Event* out, int maxEvents
             if (vowelEnd < beat[k]) vowelEnd = beat[k];
             const int32_t at = beat[k] + (int32_t)(kDiphthongAt * (float)(vowelEnd - beat[k]));
             sink.put(at, kChTongue, v->endX, v->endD, 0.0f, 0);
-            sink.put(at, kChLips, v->endLip, 0.0f, 0.0f, 0);
+            sink.put(at, kChLips, v->endLip, kLipsVowel, 0.0f, 0);
             lip = v->endLip; poseX = v->endX; poseD = v->endD;
         }
         for (int i = 0; i < s.nCoda; ++i)
-            em.consonant(s.coda[i], t[i], beat[k], poseX, poseD, lip);
+            em.consonant(s.coda[i], t[i], beat[k], poseX, poseD, lip, havePose);
 
         prevBeat = beat[k];
     }

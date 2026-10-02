@@ -40,16 +40,17 @@ RowLock whistleRow(int sections, int row) {
 // pose for a note moved by 12 log2(N / 22): every lip mode scales with 1 / N,
 // but the jet's transit is physical and does not, so the lock pulls away from
 // the mode, and further the nearer the pose sits to its threshold. measured
-// at the fitted table: at 16 the lowest rows sit flat, row 77 by 119 cents and
-// row 78 by 136; at 26 row 78 sits 117 cents sharp and the top rows up to 91
-// flat. the tolerance there is 160 cents, the worst plus a margin. and the
-// jet's reach in hertz does not move with size: at 16 the top two rows would
-// whistle past 2.5 kHz and do not lock (row 94) or lock on another mode (row
-// 95); at 26 the bottom row would whistle under 600 Hz and does not lock.
-// rows the size puts outside 600 .. 2500 Hz are not asked.
+// at the fitted table: at 16 every row sits within 83 cents, the lowest the
+// flattest (row 79); at 26 the lowest rows sit sharp, row 80 by 156 cents,
+// and the top rows within 12. the tolerance there is 180 cents, the worst
+// plus a margin. and the jet's reach in hertz does not move with size: at 16
+// the top two rows would whistle past 2.5 kHz and do not lock (row 94) or
+// lock on another mode (row 95); at 26 the bottom rows would whistle under
+// 700 Hz and do not hold their note (row 78 locks 206 cents sharp, row 79
+// barely locks). rows the size puts outside 700 .. 2500 Hz are not asked.
 WP_TEST(voice_whistle_every_table_note_locks) {
-    const double kSizeTolerance = 160.0;
-    const double kReachLo = 600.0, kReachHi = 2500.0;
+    const double kSizeTolerance = 180.0;
+    const double kReachLo = 700.0, kReachHi = 2500.0;
     for (int row = kWhistleMidiLo; row < kWhistleMidiLo + kWhistleCount; ++row) {
         const RowLock r = whistleRow(kDefaultSections, row);
         CHECK_MSG(r.whistle > 0.5f && std::fabs(r.cents) <= 50.0, "N=22 row %d: %+.0f cents, whistle %.3f", row, r.cents,

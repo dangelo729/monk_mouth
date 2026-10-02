@@ -15,7 +15,7 @@
 //   wptool whistle 84 -o w.wav                          a note through Voice::whistle and the table: the same report
 //   wptool whistle fit                                  grid-search the whistle table; prints the block for wp_vocab.cpp
 //
-// common options: --size N (sections, 16..26)  --seed S  --midi M  --sec T
+// common options: --size N (sections, whole or not, 16..26)  --seed S  --midi M  --sec T
 //                 --breath B  --tense T  --no-halfband  --no-wobble
 //                 --tune NAME=VALUE (any field of wp::Tuning; repeatable)
 //                 --png FILE (a spectrogram of the render: 0-8 kHz, ticks every 100 ms)
@@ -47,7 +47,7 @@ struct Args {
     std::vector<std::string> pos;
     std::string out = "out.wav";
     std::string png;                                       // --png: a spectrogram of whatever was rendered
-    int   size = kDefaultSections;
+    float size = kDefaultSections;
     uint32_t seed = 1;
     float midi = 48.0f, sec = 2.0f, breath = 0.8f, tense = -1.0f;
     float tonguePos = -1.0f, tongueHeight = -1.0f, lips = -1.0f, velum = -1.0f;
@@ -61,24 +61,25 @@ struct Args {
 // --tune NAME=VALUE: every field of wp::Tuning, by name
 struct TuneField { const char* name; float Tuning::* field; };
 const TuneField kTuneFields[] = {
-    {"glottisRest", &Tuning::glottisRest},             {"aspirationGain", &Tuning::aspirationGain},
-    {"aspirationHz", &Tuning::aspirationHz},           {"aspirationQ", &Tuning::aspirationQ},
-    {"noiseVoicedFloor", &Tuning::noiseVoicedFloor},   {"noiseVoicedPulse", &Tuning::noiseVoicedPulse},
-    {"noiseUnvoiced", &Tuning::noiseUnvoiced},         {"glottalReflection", &Tuning::glottalReflection},
-    {"lipReflection", &Tuning::lipReflection},         {"damp", &Tuning::damp},
-    {"throatD", &Tuning::throatD},                     {"throatUpperD", &Tuning::throatUpperD},
-    {"velumRest", &Tuning::velumRest},                 {"turbulenceGain", &Tuning::turbulenceGain},
-    {"fricationHz", &Tuning::fricationHz},             {"fricationQ", &Tuning::fricationQ},
-    {"voicedFrication", &Tuning::voicedFrication},     {"burstGain", &Tuning::burstGain},
-    {"burstHalfLife", &Tuning::burstHalfLife},         {"diction", &Tuning::diction},
-    {"rateBreathUp", &Tuning::rateBreathUp},           {"rateBreathDown", &Tuning::rateBreathDown},
-    {"rateGlottis", &Tuning::rateGlottis},             {"rateTenseness", &Tuning::rateTenseness},
-    {"rateTongue", &Tuning::rateTongue},               {"rateLips", &Tuning::rateLips},
-    {"rateVelum", &Tuning::rateVelum},                 {"vibFadeRate", &Tuning::vibFadeRate},
-    {"wobbleSlowHz", &Tuning::wobbleSlowHz},           {"wobbleFastHz", &Tuning::wobbleFastHz},
-    {"wobbleSlowCents", &Tuning::wobbleSlowCents},     {"wobbleFastCents", &Tuning::wobbleFastCents},
-    {"breathPressure", &Tuning::breathPressure},       {"jetLength", &Tuning::jetLength},
-    {"jetGain", &Tuning::jetGain},
+    {"glottisRest", &Tuning::glottisRest},             {"growl", &Tuning::growl},
+    {"aspirationGain", &Tuning::aspirationGain},       {"aspirationHz", &Tuning::aspirationHz},
+    {"aspirationQ", &Tuning::aspirationQ},             {"noiseVoicedFloor", &Tuning::noiseVoicedFloor},
+    {"noiseVoicedPulse", &Tuning::noiseVoicedPulse},   {"noiseUnvoiced", &Tuning::noiseUnvoiced},
+    {"glottalReflection", &Tuning::glottalReflection}, {"lipReflection", &Tuning::lipReflection},
+    {"damp", &Tuning::damp},                           {"throatD", &Tuning::throatD},
+    {"throatUpperD", &Tuning::throatUpperD},           {"velumRest", &Tuning::velumRest},
+    {"lipRound", &Tuning::lipRound},                   {"gain", &Tuning::gain},
+    {"turbulenceGain", &Tuning::turbulenceGain},       {"fricationHz", &Tuning::fricationHz},
+    {"fricationQ", &Tuning::fricationQ},               {"voicedFrication", &Tuning::voicedFrication},
+    {"burstGain", &Tuning::burstGain},                 {"burstHalfLife", &Tuning::burstHalfLife},
+    {"diction", &Tuning::diction},                     {"rateBreathUp", &Tuning::rateBreathUp},
+    {"rateBreathDown", &Tuning::rateBreathDown},       {"rateGlottis", &Tuning::rateGlottis},
+    {"rateTenseness", &Tuning::rateTenseness},         {"rateTongue", &Tuning::rateTongue},
+    {"rateLips", &Tuning::rateLips},                   {"rateVelum", &Tuning::rateVelum},
+    {"vibFadeRate", &Tuning::vibFadeRate},             {"wobbleSlowHz", &Tuning::wobbleSlowHz},
+    {"wobbleFastHz", &Tuning::wobbleFastHz},           {"wobbleSlowCents", &Tuning::wobbleSlowCents},
+    {"wobbleFastCents", &Tuning::wobbleFastCents},     {"breathPressure", &Tuning::breathPressure},
+    {"jetLength", &Tuning::jetLength},                 {"jetGain", &Tuning::jetGain},
 };
 
 bool parseTune(const std::string& s, Tuning& t) {
@@ -97,7 +98,7 @@ bool parseArgs(int argc, char** argv, Args& a) {
         auto num = [&](float& v) { if (i + 1 >= argc) return false; v = (float)atof(argv[++i]); return true; };
         if (s == "-o") { if (i + 1 >= argc) return false; a.out = argv[++i]; }
         else if (s == "--png") { if (i + 1 >= argc) return false; a.png = argv[++i]; }
-        else if (s == "--size") { float v; if (!num(v)) return false; a.size = (int)v; }
+        else if (s == "--size") { float v; if (!num(v)) return false; a.size = v; }
         else if (s == "--seed") { float v; if (!num(v)) return false; a.seed = (uint32_t)v; }
         else if (s == "--midi") { if (!num(a.midi)) return false; }
         else if (s == "--sec") { if (!num(a.sec)) return false; a.secGiven = true; }
@@ -189,7 +190,7 @@ int cmdPose(const Args& a) {
 
 // ---- formants / fit -----------------------------------------------------------------------------------
 
-std::vector<double> poseFormants(int n, const Tuning& tuning, float tongueX, float tongueD, float lipD,
+std::vector<double> poseFormants(float n, const Tuning& tuning, float tongueX, float tongueD, float lipD,
                                  float velumD = kVelumShut) {
     Pose pose;
     pose.tongueX = tongueX; pose.tongueD = tongueD; pose.lipD = lipD; pose.velumD = velumD;
@@ -212,14 +213,15 @@ int cmdFormants(const Args& a) {
     }
     const float velumD = a.velum > 0.0f ? lerpf(kVelumShut, kVelumOpen, a.velum) : kVelumShut;
     const Tuning tuning = clamped(a.tuning, kDefaultFs);  // what a voice would make of it
+    if (!a.pos.empty()) lip = clampf(vowelLips(lip, tuning.lipRound), 0.0f, kLipDMax);   // as the singer holds it
     const std::vector<double> f = poseFormants(a.size, tuning, x, dd, lip, velumD);
-    printf("tongueX %.3f  tongueD %.3f  lipD %.3f  (N = %d)\n", x, dd, lip, a.size);
+    printf("tongueX %.3f  tongueD %.3f  lipD %.3f  (N = %g)\n", x, dd, lip, a.size);
     for (size_t i = 0; i < f.size() && i < 4; ++i) printf("  F%d  %7.1f Hz\n", (int)i + 1, f[i]);
     Pose pose; pose.tongueX = x; pose.tongueD = dd; pose.lipD = lip;
     float d[kMaxSections];
     shapeTract(pose, a.size, d, nullptr, nullptr, tuning);
     printf("  d:");
-    for (int i = 0; i < a.size; ++i) printf(" %.2f", d[i]);
+    for (int i = 0; i < layoutFor(a.size).n; ++i) printf(" %.2f", d[i]);
     printf("\n");
     return 0;
 }
@@ -305,8 +307,8 @@ int cmdFit(const Args& a) {
     }
     pick[ph::UH] = candidates(*targetOf(ph::UH))[0].second;       // UH is in neither chain
 
-    printf("// fitted by `wptool fit` over %d tubes, N = %d, orderings enforced with a %.0f %% margin.\n",
-           (int)grid.size(), a.size, 100.0 * (margin - 1.0));
+    printf("// fitted by `wptool fit` over %d tubes, N = %g, orderings enforced with a %.0f %% margin.\n",
+           (int)grid.size(), (double)a.size, 100.0 * (margin - 1.0));
     printf("// targets: Peterson & Barney 1952, adult male.   tongueX tongueD lipD       F1 (target)  F2 (target)   residual\n");
     for (int k = 0; k < kFormantTargetCount; ++k) {
         const FormantTarget& t = kFormantTargets[k];
@@ -669,7 +671,7 @@ const double kLockPer = 0.95, kLockWhistle = 0.5;         // what a lock is
 const int kFitSizeLo = 16, kFitSizeHi = 26;               // the human sizes a row is also asked to lock at
 const double kSizeMiss = 9.0;                              // a size that does not lock costs a 300-cent miss
 
-std::vector<double> poseLipModes(int n, const Tuning& tuning, const WhistlePose& p) {
+std::vector<double> poseLipModes(float n, const Tuning& tuning, const WhistlePose& p) {
     Pose pose;
     pose.tongueX = p.tongueX; pose.tongueD = p.tongueD; pose.lipD = p.lipD; pose.velumD = kVelumShut;
     if (p.slotPlace >= 0.0f) { pose.slot[0].active = true; pose.slot[0].place = p.slotPlace; pose.slot[0].degree = p.slotDegree; }
@@ -883,8 +885,8 @@ int cmdWhistleFit(const Args& a) {
     const int midiLo = mLo + runLo;
     double worstCents = 0.0, worstDrift = 0.0;
     int flips = 0;
-    printf("// fitted by `wptool whistle fit`: %d poses screened, %d rendered, %d lock; N = %d, breath %.2f, %.2f s.\n",
-           (int)grid.size(), (int)cands.size(), (int)locks.size(), a.size, breath, sec);
+    printf("// fitted by `wptool whistle fit`: %d poses screened, %d rendered, %d lock; N = %g, breath %.2f, %.2f s.\n",
+           (int)grid.size(), (int)cands.size(), (int)locks.size(), (double)a.size, breath, sec);
     printf("// a lock: periodicity above %.2f and whistle above %.1f after 300 ms. every lock also rendered at breath\n"
            "// 0.5 and 1.0 and at N = %d and %d; the cost trades cents, off-mode, held locks and size error against pose jumps.\n"
            "// drift: whistleHz from breath 0.5 to 1.0.\n", kLockPer, kLockWhistle, kFitSizeLo, kFitSizeHi);
@@ -930,7 +932,7 @@ int cmdWhistle(const Args& a) {
         float lo, hi;
         v.whistleRange(lo, hi);
         const double hz = midiToHz(midi);
-        printf("whistle %.2f (%.1f Hz)  breath %.2f  N = %d  table range %.2f .. %.2f\n", midi, hz, a.breath, a.size, lo, hi);
+        printf("whistle %.2f (%.1f Hz)  breath %.2f  N = %g  table range %.2f .. %.2f\n", midi, hz, a.breath, (double)a.size, lo, hi);
         std::vector<float> x;
         const double mean = renderWhistle(v, sec, x);
         const BodyState st = v.state();
@@ -949,8 +951,8 @@ int cmdWhistle(const Args& a) {
     v.setBreath(a.breath);
     char slot[32] = "-";
     if (a.slotPlace >= 0.0f) snprintf(slot, sizeof slot, "%.3f %.3f", a.slotPlace, a.slotDegree);
-    printf("tongue %.3f %.3f  lips %.3f  slot %s  breath %.2f  N = %d\n", a.tonguePos, a.tongueHeight, a.lips, slot,
-           a.breath, a.size);
+    printf("tongue %.3f %.3f  lips %.3f  slot %s  breath %.2f  N = %g\n", a.tonguePos, a.tongueHeight, a.lips, slot,
+           a.breath, (double)a.size);
     std::vector<float> x;
     const double mean = renderWhistle(v, sec, x);
     if (whistleReport(v, x, mean)) return 1;

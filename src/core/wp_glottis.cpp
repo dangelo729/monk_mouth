@@ -60,6 +60,7 @@ void Glottis::init(float fs) {
 
 void Glottis::reset() {
     t_ = 0.0f;
+    odd_ = false;
     beginPeriod();
 }
 
@@ -69,6 +70,8 @@ void Glottis::reset() {
 void Glottis::beginPeriod() {
     f0_ = clampf(f0Next_, kMinF0, fs_ * 0.125f);
     tense_ = clampf(tenseNext_, 0.0f, 1.0f);
+    gain_ = odd_ ? 1.0f - growl_ : 1.0f;
+    odd_ = !odd_;
     shape_ = lfSetup(tense_);
     dt_ = f0_ / fs_;
     invDelta_ = 1.0f / shape_.Delta;

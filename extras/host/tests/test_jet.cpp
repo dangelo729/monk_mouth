@@ -67,11 +67,15 @@ struct Rig {
 void expectedAirflow(const Body& b, const Tuning& t, float& flow, float& delay, float& halfWidth, float& lipArea) {
     const int n = b.sections();
     const float* d = b.diameters();
-    int lipStart = 0;
-    while (lipStart < n && !((2 * lipStart + 1) * 22 >= n * 39)) ++lipStart;
+    const Layout& layout = b.layout();
     float tract = 1e30f, lip = 1e30f;
-    for (int i = 0; i < lipStart; ++i) tract = std::fmin(tract, d[i] * d[i]);
-    for (int i = lipStart; i < n; ++i) lip = std::fmin(lip, d[i] * d[i]);
+    for (int i = 0; i < n; ++i) {                                // a section past 38/44 in part is lip in part
+        const float a = d[i] * d[i];
+        const float w = std::fmin(std::fmax(layout.centre(i) - layout.length * 38.0f / 44.0f + 0.5f, 0.0f), 1.0f);
+        if (w < 1.0f) tract = std::fmin(tract, a / (1.0f - w));
+        if (w > 0.0f) lip = std::fmin(lip, a / w);
+    }
+    if (lip >= 1e30f) lip = d[n - 1] * d[n - 1];
     const bool open = tract >= kJetMinArea && lip >= kJetMinArea;
     const double ag = std::fmax(lerpf(kGlottisAreaShut, kGlottisAreaOpen, b.glottisOpen()), kJetMinArea) * 1e-4;
     const double at = std::fmax(tract, kJetMinArea) * 1e-4, al = std::fmax(lip, kJetMinArea) * 1e-4;

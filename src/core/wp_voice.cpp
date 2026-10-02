@@ -3,18 +3,21 @@
 
 namespace wp {
 
-Voice::Voice(int sections, uint32_t seed, float sampleRate)
+// the table was fitted at kDefaultSections: every mode of a voice N long
+// scales by kDefaultSections / N, so its note sits this far up the table
+static float whistleShiftAt(float sections) { return 12.0f * std::log2(sections / (float)kDefaultSections); }
+
+Voice::Voice(float sections, uint32_t seed, float sampleRate)
     : fs_(sampleRate > 1000.0f ? sampleRate : kDefaultFs), tube_(sections) {
     rng_.seed(seed);
     glottis_.init(fs_);
     jet_.init(fs_);
     noise_.init(fs_);
-    body_.init(tube_.sections(), fs_);
+    body_.init(tube_.layout().length, fs_);
     pitch_.init(fs_, kDefaultMidi);
     retune(tuning_);                                      // the defaults
-    // the table was fitted at kDefaultSections: every mode of a voice N long
-    // scales by kDefaultSections / N, so its note sits this far up the table
-    whistleShift_ = 12.0f * std::log2((float)tube_.sections() / (float)kDefaultSections);
+    sections_ = sectionsLatched_ = tube_.layout().length;
+    whistleShift_ = whistleShiftAt(sections_);
     for (int i = 0; i < kMaxSections; ++i) stateDiameters_[i] = 0.0f;
     publish();
 }
@@ -59,6 +62,12 @@ void Voice::setWobble(float amount01)       { write(kChWobble, amount01); }
 void Voice::setTuning(const Tuning& t) {
     tuning_ = clamped(t, fs_);
     tuningPending_ = true;
+}
+
+void Voice::setSections(float sections) {
+    sections_ = layoutFor(sections).length;
+    sectionsPending_ = true;
+    whistleShift_ = whistleShiftAt(sections_);
 }
 
 void Voice::noteOn(float midi, float vel01) {
@@ -155,6 +164,11 @@ void Voice::latch() {
         tuningPending_ = false;
         retuneDue_ = true;
     }
+    if (sectionsPending_) {
+        sectionsLatched_ = sections_;
+        sectionsPending_ = false;
+        resizeDue_ = true;
+    }
     const uint32_t dirty = pending_.dirty;
     if (!dirty) return;
     for (int ch = 0; ch < kChCount; ++ch) {
@@ -175,7 +189,7 @@ void Voice::apply(uint8_t ch, float a, float b, float rate) {
         case kChGlottis:      body_.setGlottis(a, rate); break;
         case kChTenseness:    body_.setTenseness(a, rate); break;
         case kChTongue:       body_.setTongue(a, b, rate); break;
-        case kChLips:         body_.setLips(a, rate); break;
+        case kChLips:         body_.setLips(a, rate, b > 0.0f); break;
         case kChVelum:        body_.setVelum(a, rate); break;
         case kChSlot0:
         case kChSlot1: {
@@ -222,6 +236,13 @@ void Voice::applyLive(bool onlyBefore, uint32_t seq) {
     }
 }
 
+// another size under the same pose: the body shapes the pose at the new
+// length, and the tube stretches what it holds over it.
+void Voice::resize(float sections) {
+    body_.resize(sections);
+    tube_.resize(body_.layout(), body_.diameters(), body_.pose().velumD, body_.ends());
+}
+
 // who is singing: every module takes its part of the tuning. block-rate, and
 // only when one was set: all the libm this costs stays off the sample path.
 void Voice::retune(const Tuning& t) {
@@ -229,6 +250,7 @@ void Voice::retune(const Tuning& t) {
     noise_.retune(fs_, t);
     body_.retune(t);
     pitch_.retune(t);
+    glottis_.setGrowl(t.growl);
     jet_.setGain(t.jetGain);
     noiseFloor_ = t.noiseVoicedFloor;
     noisePulse_ = t.noiseVoicedPulse;
@@ -240,6 +262,10 @@ void Voice::control() {
     if (retuneDue_) {                                     // ahead of the targets: they aim at the new rates
         retune(tuningLatched_);
         retuneDue_ = false;
+    }
+    if (resizeDue_) {                                     // after the tuning: the new shape wears its losses
+        resize(sectionsLatched_);
+        resizeDue_ = false;
     }
 
     // ---- targets: the last writer wins, in the caller's own order --------------------------------
@@ -275,6 +301,7 @@ void Voice::control() {
     const int last = tube_.sections() - 1;
     voicing_ = voicingT_; voicingT_ = f.voicing; dVoicing_ = (voicingT_ - voicing_) * kInvBlock;
     asp_ = aspT_;         aspT_ = f.aspiration;  dAsp_ = (aspT_ - asp_) * kInvBlock;
+    out_ = outT_;         outT_ = kOutputGain * tuningLatched_.gain;  dOut_ = (outT_ - out_) * kInvBlock;
     for (int j = 0; j < 3; ++j) {
         turb_[j] = turbT_[j]; turbT_[j] = f.turb[j]; dTurb_[j] = (turbT_[j] - turb_[j]) * kInvBlock;
         turbOn_[j] = turb_[j] > 0.0f || turbT_[j] > 0.0f;
@@ -291,6 +318,7 @@ void Voice::renderRun(float* out, int n) {
     for (int i = 0; i < n; ++i) {
         voicing_ += dVoicing_;
         asp_ += dAsp_;
+        out_ += dOut_;
 
         float aspNoise, fricNoise;
         noise_.step(rng_, aspNoise, fricNoise);
@@ -313,7 +341,7 @@ void Voice::renderRun(float* out, int n) {
 
         float y = tube_.step(source);
         if (useHalfband_) y = halfband_.process(y);
-        out[i] = clampf(y * kOutputGain, -1.0f, 1.0f);
+        out[i] = clampf(y * out_, -1.0f, 1.0f);
     }
 }
 
@@ -351,6 +379,7 @@ void Voice::publish() {
     }
     state_.midi = pitch_.midi();
     state_.f0 = pitch_.f0();
+    state_.vibrato = pitch_.vibrato();
     state_.voicing = body_.frame().voicing;
     state_.hiss = body_.hiss();
     state_.pressure = body_.pressure();
@@ -360,11 +389,12 @@ void Voice::publish() {
     state_.whistle = jet_.whistle();
     state_.whistleHz = jet_.whistleHz();
     const float* d = body_.diameters();
-    for (int i = 0; i < body_.sections(); ++i) stateDiameters_[i] = d[i];
+    stateSections_ = body_.sections();
+    for (int i = 0; i < stateSections_; ++i) stateDiameters_[i] = d[i];
 }
 
 int Voice::diameters(float* out, int max) const {
-    const int n = tube_.sections() < max ? tube_.sections() : max;
+    const int n = stateSections_ < max ? stateSections_ : max;
     for (int i = 0; i < n; ++i) out[i] = stateDiameters_[i];
     return n;
 }

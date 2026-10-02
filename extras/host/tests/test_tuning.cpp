@@ -1,8 +1,8 @@
 // wind_pipe — tests/test_tuning.cpp
 // the tunables: a default tuning is no tuning at all, every field is wired to
-// something, nothing is limited but what would end the voice, and the three
-// behaviours the tuning adds — a resting glottis, a resting velum, diction —
-// do what they say.
+// something, nothing is limited but what would end the voice, and the
+// behaviours the tuning adds — a resting glottis, a resting velum, the lips
+// held round or spread, diction — do what they say.
 #include <cmath>
 #include <cstring>
 #include <vector>
@@ -18,12 +18,12 @@ namespace {
 // a Tuning is nothing but floats, so a test can walk its fields by index.
 constexpr int kFields = (int)(sizeof(Tuning) / sizeof(float));
 static_assert(sizeof(Tuning) == kFields * sizeof(float), "Tuning is floats and nothing else");
-static_assert(kFields == 35, "a new tunable: name it in kFieldNames below");
+static_assert(kFields == 38, "a new tunable: name it in kFieldNames below");
 
 const char* const kFieldNames[kFields] = {
-    "glottisRest", "aspirationGain", "aspirationHz", "aspirationQ", "noiseVoicedFloor", "noiseVoicedPulse",
+    "glottisRest", "growl", "aspirationGain", "aspirationHz", "aspirationQ", "noiseVoicedFloor", "noiseVoicedPulse",
     "noiseUnvoiced", "glottalReflection", "lipReflection", "damp", "throatD", "throatUpperD", "velumRest",
-    "turbulenceGain", "fricationHz", "fricationQ", "voicedFrication", "burstGain", "burstHalfLife", "diction",
+    "lipRound", "gain", "turbulenceGain", "fricationHz", "fricationQ", "voicedFrication", "burstGain", "burstHalfLife", "diction",
     "rateBreathUp", "rateBreathDown", "rateGlottis", "rateTenseness", "rateTongue", "rateLips", "rateVelum",
     "vibFadeRate", "wobbleSlowHz", "wobbleFastHz", "wobbleSlowCents", "wobbleFastCents",
     "breathPressure", "jetLength", "jetGain",
@@ -414,6 +414,83 @@ WP_TEST(tuning_glottis_rests_open) {
     CHECK_MSG(std::fabs(v.state().glottis - 0.1f) < 1e-3f, "re-aimed to %.4f", v.state().glottis);
 }
 
+// lipRound: the lips a singer holds every vowel with. rounded, a vowel's lips
+// purse toward UW's; spread, a rounded vowel's open toward the widest; and
+// that is all it touches: a labial still closes, a whistle's lips are the
+// table's, and a retune re-holds the vowel being sung.
+WP_TEST(tuning_lip_round_holds_the_vowels_lips) {
+    auto vowelAt = [](float round, const char* phones) {
+        Tuning t;
+        t.lipRound = round;
+        Voice v(22, 2);
+        v.setTuning(t);
+        v.noteOn(45.0f, 0.8f);
+        v.syllable(phones);
+        std::vector<float> x(22050);
+        v.render(x.data(), (int)x.size());
+        return v.state().lips;
+    };
+    const float aa = vowelAt(0.0f, "AA"), aaRound = vowelAt(0.5f, "AA");
+    const float uw = vowelAt(0.0f, "UW"), uwSpread = vowelAt(-0.5f, "UW");
+    CHECK_MSG(std::fabs(aa - vowel(ph::AA).lipD / kLipDMax) < 1e-3f, "AA's own lips %.4f", aa);
+    CHECK_MSG(std::fabs(aaRound - vowelLips(vowel(ph::AA).lipD, 0.5f) / kLipDMax) < 1e-3f && aaRound < 0.7f * aa,
+              "AA rounded half way: %.4f of %.4f", aaRound, aa);
+    CHECK_MSG(std::fabs(uwSpread - vowelLips(vowel(ph::UW).lipD, -0.5f) / kLipDMax) < 1e-3f && uwSpread > 1.5f * uw,
+              "UW spread half way: %.4f of %.4f", uwSpread, uw);
+    CHECK(vowelLips(vowel(ph::AA).lipD, 1.0f) == kLipRoundD || std::fabs(vowelLips(vowel(ph::AA).lipD, 1.0f) - kLipRoundD) < 1e-5f);
+    CHECK(std::fabs(vowelLips(vowel(ph::UW).lipD, -1.0f) - kLipDMax) < 1e-5f);
+    CHECK(vowelLips(0.9f, 0.0f) == 0.9f);                               // 0 is the vowel's own, exactly
+
+    // spread wide, an SH still holds its own lips, and the AA after it opens
+    // them all the way
+    auto sh = [](float round, float& narrowest, float& after) {
+        Tuning t;
+        t.lipRound = round;
+        Voice v(22, 2);
+        v.setTuning(t);
+        v.noteOn(45.0f, 0.8f);
+        v.syllable("SH AA");
+        std::vector<float> x(441);
+        narrowest = 1.0f;
+        for (int k = 0; k < 60; ++k) {
+            v.render(x.data(), (int)x.size());
+            if (v.state().lips < narrowest) narrowest = v.state().lips;
+        }
+        after = v.state().lips;
+    };
+    float shOwn, aaOwn, shSpread, aaSpread;
+    sh(0.0f, shOwn, aaOwn);
+    sh(-1.0f, shSpread, aaSpread);
+    CHECK_MSG(std::fabs(shSpread - shOwn) < 1e-3f && std::fabs(shOwn - 0.9f / kLipDMax) < 0.02f,
+              "the SH held its own lips: %.4f spread, %.4f not", shSpread, shOwn);
+    CHECK_MSG(aaSpread > 0.99f && aaOwn > 0.99f, "the AA after it: %.4f spread, %.4f not", aaSpread, aaOwn);
+
+    // a whistle's lips are its table's, whatever the singer's
+    auto whistled = [](float round) {
+        Tuning t;
+        t.lipRound = round;
+        Voice v(22, 2);
+        v.setTuning(t);
+        v.whistle(84.0f, 0.8f);
+        std::vector<float> x(22050);
+        v.render(x.data(), (int)x.size());
+        return v.state().lips;
+    };
+    CHECK_MSG(whistled(0.8f) == whistled(0.0f), "whistle lips %.4f rounded, %.4f not", whistled(0.8f), whistled(0.0f));
+
+    // nobody sings again: the retune re-holds the AA in the mouth
+    Voice v(22, 2);
+    v.noteOn(45.0f, 0.8f);
+    v.syllable("AA");
+    std::vector<float> x(22050);
+    v.render(x.data(), (int)x.size());
+    Tuning t;
+    t.lipRound = 0.5f;
+    v.setTuning(t);
+    v.render(x.data(), (int)x.size());
+    CHECK_MSG(std::fabs(v.state().lips - aaRound) < 1e-3f, "a held AA re-rounded to %.4f (%.4f)", v.state().lips, aaRound);
+}
+
 // velumRest: the nose stays coupled through a score's commit and through a
 // nasal's close. half open, a stop still bursts; wide open it no longer does —
 // the body's own rule for a nasal voice, not a limit on the tuning.
@@ -484,4 +561,54 @@ WP_TEST(tuning_diction_scales_the_gesture_not_the_score) {
     Voice crisp(22, 4), plain(22, 4);
     crisp.setTuning(t);
     CHECK(!same(singLine(crisp), singLine(plain)));
+}
+
+// gain: the pipe's output level, ahead of the clamp. 1 is the voice nobody
+// set one on, sample for sample. a new one ramps straight across the block it
+// lands on, so a held note never steps, and from the next block on 0.5 is
+// exactly half. however loud, the clamp still holds the output to [-1, 1].
+WP_TEST(tuning_gain_scales_the_output_ahead_of_the_clamp) {
+    {   Tuning t;
+        t.gain = 1.0f;
+        Voice plain(22, 5), one(22, 5);
+        one.setTuning(t);
+        CHECK(same(singLine(plain), singLine(one))); }
+
+    // twins on a held note; half the gain set on one at a block's edge
+    const int at = 100 * kBlock, after = 100 * kBlock;
+    std::vector<float> full((size_t)(at + after)), half(full.size());
+    Voice a(22, 6), b(22, 6);
+    a.noteOn(45.0f, 0.8f);
+    b.noteOn(45.0f, 0.8f);
+    a.render(full.data(), at);
+    b.render(half.data(), at);
+    Tuning t;
+    t.gain = 0.5f;
+    b.setTuning(t);
+    a.render(full.data() + at, after);
+    b.render(half.data() + at, after);
+    CHECK(std::memcmp(full.data(), half.data(), (size_t)at * sizeof(float)) == 0);
+    double worstRamp = 0.0;
+    for (int i = 0; i < kBlock; ++i) {
+        const double want = full[at + i] * (1.0 - 0.5 * (i + 1) / kBlock);
+        worstRamp = std::fmax(worstRamp, std::fabs(half[at + i] - want));
+    }
+    CHECK_MSG(worstRamp < 1e-6, "the block it lands on is off the ramp by %.3g", worstRamp);
+    int notHalf = 0, compared = 0;
+    for (int i = at + kBlock; i < at + after; ++i) {
+        if (std::fabs(full[i]) >= 1.0f) continue;                       // the clamp's, not the gain's
+        ++compared;
+        if (half[i] != 0.5f * full[i]) ++notHalf;
+    }
+    CHECK_MSG(compared > after / 2 && notHalf == 0, "%d of %d samples not exactly half", notHalf, compared);
+
+    t.gain = 100.0f;
+    Voice loud(22, 6);
+    loud.setTuning(t);
+    loud.noteOn(45.0f, 0.8f);
+    std::vector<float> x(22050);
+    loud.render(x.data(), (int)x.size());
+    float peak = 0.0f;
+    for (float s : x) if (std::fabs(s) > peak) peak = std::fabs(s);
+    CHECK_MSG(peak == 1.0f, "gain 100: peak %.4f", peak);
 }

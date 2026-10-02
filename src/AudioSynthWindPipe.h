@@ -48,10 +48,10 @@
 
 class AudioSynthWindPipe : public AudioStream {
 public:
-    // size is a section count, set at construction: 22 = 17.5 cm (adult male),
-    // 19 ~ 15 cm, 16 ~ 12.7 cm, up to 26. one seeded xorshift32 per voice:
+    // size is in sections, whole or not, set at construction and live by setSections:
+    // 22 = 17.5 cm (adult male), 19 ~ 15 cm, 16 ~ 12.7 cm, up to 26. one seeded xorshift32 per voice:
     // give each voice of a choir its own seed. statically allocate, never destroy.
-    explicit AudioSynthWindPipe(int sections = wp::kDefaultSections, uint32_t seed = 1);
+    explicit AudioSynthWindPipe(float sections = wp::kDefaultSections, uint32_t seed = 1);
 
     // lungs + larynx
     void setBreath(float p01);              // the loudness axis; 0 = silent
@@ -71,6 +71,7 @@ public:
     // who is singing: every tunable at once (core/wp_tuning.h), held inside its hard limits
     void setTuning(const wp::Tuning& t);
     wp::Tuning tuning() const;              // the last one asked for, as clamped
+    void setSections(float sections);       // the size, live: a held note carries on at the new length
     // conveniences
     void noteOn(float midi, float vel01);   // pitch + breath + vibrato onset, one block
     void noteOff();                         // breath to 0
@@ -87,7 +88,7 @@ public:
     wp::BodyState state() const;            // eased pose, f0, voicing, hiss, closed, phoneme
     int  diameters(float* out, int max) const;
 
-    int  sections() const { return voice_.sections(); }
+    float sections() const { return voice_.sections(); }  // the last size asked for
     void setHalfband(bool on);              // the output lowpass: keep or drop by ear (a CPU lever)
 
     // the audio interrupt: latch targets (masked), render one block through

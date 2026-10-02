@@ -53,12 +53,12 @@ inline std::vector<double> magnitudeSpectrum(const float* x, int count, int fftS
 }
 
 // the impulse response of a static tube shape, velum as given, through a pipe
-// with the tuning's losses.
-inline std::vector<float> impulseResponse(int sections, const float* diameters, float velumDiameter, int count,
-                                          const Tuning& tuning = Tuning()) {
+// with the tuning's losses. ends: the end pieces' diameters (shapeTract's).
+inline std::vector<float> impulseResponse(float sections, const float* diameters, float velumDiameter, int count,
+                                          const Tuning& tuning = Tuning(), const float* ends = nullptr) {
     Tube tube(sections);
     tube.retune(tuning);
-    tube.setShape(diameters, velumDiameter);
+    tube.setShape(diameters, velumDiameter, ends);
     tube.snap();
     tube.reset();
     std::vector<float> out((size_t)count);
@@ -85,9 +85,10 @@ inline std::vector<double> spectralPeaks(const std::vector<double>& mag, double 
 }
 
 // F1..Fn of a static shape: unit impulse through the tube, peak-pick the FFT.
-inline std::vector<double> formants(int sections, const float* diameters, float velumDiameter,
-                                    double fs = kDefaultFs, double hiHz = 5000.0, const Tuning& tuning = Tuning()) {
-    const std::vector<float> ir = impulseResponse(sections, diameters, velumDiameter, 4096, tuning);
+inline std::vector<double> formants(float sections, const float* diameters, float velumDiameter,
+                                    double fs = kDefaultFs, double hiHz = 5000.0, const Tuning& tuning = Tuning(),
+                                    const float* ends = nullptr) {
+    const std::vector<float> ir = impulseResponse(sections, diameters, velumDiameter, 4096, tuning, ends);
     const std::vector<double> mag = magnitudeSpectrum(ir.data(), (int)ir.size(), 8192);
     return spectralPeaks(mag, fs, 120.0, hiHz);
 }
@@ -95,7 +96,7 @@ inline std::vector<double> formants(int sections, const float* diameters, float 
 // the resonances the jet sees (whistle plan §7.1): a unit impulse injected
 // into the last section, the tube's output read there. the driving point at
 // the lips, where peak-picking the throat-end response finds every formant.
-inline std::vector<float> lipImpulseResponse(int sections, const float* diameters, float velumDiameter, int count,
+inline std::vector<float> lipImpulseResponse(float sections, const float* diameters, float velumDiameter, int count,
                                              const Tuning& tuning = Tuning()) {
     Tube tube(sections);
     tube.retune(tuning);
@@ -109,7 +110,7 @@ inline std::vector<float> lipImpulseResponse(int sections, const float* diameter
 }
 
 // the lip response's peaks over the whistle band, 300 .. 6000 Hz
-inline std::vector<double> whistleModes(int sections, const float* diameters, float velumDiameter,
+inline std::vector<double> whistleModes(float sections, const float* diameters, float velumDiameter,
                                         const Tuning& tuning = Tuning(), double fs = kDefaultFs) {
     const std::vector<float> ir = lipImpulseResponse(sections, diameters, velumDiameter, 4096, tuning);
     const std::vector<double> mag = magnitudeSpectrum(ir.data(), (int)ir.size(), 8192);

@@ -51,7 +51,7 @@ FLASHMEM void AudioSynthWindPipe::initFlushToZero() {
     __builtin_arm_set_fpscr(__builtin_arm_get_fpscr() | kFlushToZero); // and the current one (setup / loop)
 }
 
-AudioSynthWindPipe::AudioSynthWindPipe(int sections, uint32_t seed)
+AudioSynthWindPipe::AudioSynthWindPipe(float sections, uint32_t seed)
     : AudioStream(0, NULL), voice_(sections, seed, AUDIO_SAMPLE_RATE_EXACT) {
     initFlushToZero();
     voice_.setAutoLatch(false);                   // update() owns the latch, inside its mask
@@ -78,6 +78,7 @@ void AudioSynthWindPipe::setVibrato(float rateHz, float cents, float onsetSec) {
 void AudioSynthWindPipe::setWobble(float amount01)   { IrqMask m; voice_.setWobble(amount01); }
 void AudioSynthWindPipe::setTuning(const wp::Tuning& t) { IrqMask m; voice_.setTuning(t); }
 wp::Tuning AudioSynthWindPipe::tuning() const        { return voice_.tuning(); }   // caller side only: no mask
+void AudioSynthWindPipe::setSections(float sections) { IrqMask m; voice_.setSections(sections); }
 void AudioSynthWindPipe::noteOn(float midi, float vel01) { IrqMask m; voice_.noteOn(midi, vel01); }
 void AudioSynthWindPipe::noteOff()                   { IrqMask m; voice_.noteOff(); }
 void AudioSynthWindPipe::whistle(float midi, float breath) { IrqMask m; voice_.whistle(midi, breath); }

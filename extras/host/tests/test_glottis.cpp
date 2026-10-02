@@ -1,4 +1,5 @@
 // wind_pipe — tests/test_glottis.cpp  (plan: Tests / Glottis)
+#include <cmath>
 #include <vector>
 
 #include "core/wp_glottis.h"
@@ -69,6 +70,33 @@ WP_TEST(glottis_period_integrates_to_zero) {
         double sum = 0.0, absSum = 0.0;
         for (int i = 0; i < 441 * 50; ++i) { const float y = g.step(); sum += y; absSum += std::fabs(y); }
         CHECK_MSG(std::fabs(sum) < 1e-3 * absSum, "tenseness %.1f: sum %.4g of |sum| %.4g", tense, sum, absSum);
+    }
+}
+
+// growl: every other period is the plain pulse times 1 - growl, sample for
+// sample, starting with the second — and each weak period still integrates
+// to zero.
+WP_TEST(glottis_growl_weakens_every_other_period) {
+    for (float growl : {0.0f, 0.3f, 1.0f, -0.5f}) {
+        Glottis g, plain;
+        g.setTargets(100.0f, 0.6f);                           // 441 samples per period exactly
+        plain.setTargets(100.0f, 0.6f);
+        g.setGrowl(growl);
+        g.init(kDefaultFs);
+        plain.init(kDefaultFs);
+        int period = 0;
+        double worst = 0.0, weakSum = 0.0, weakAbs = 0.0;
+        for (int i = 0; i < 441 * 20; ++i) {
+            const float t = plain.phase();
+            const float y = g.step(), ref = plain.step();
+            const float want = (period & 1) ? (1.0f - growl) * ref : ref;
+            worst = std::fmax(worst, std::fabs((double)y - (double)want));
+            if (period & 1) { weakSum += y; weakAbs += std::fabs(y); }
+            if (plain.phase() < t) ++period;                  // the seam: the next sample starts a period
+        }
+        CHECK_MSG(period >= 19, "growl %.1f: %d periods", growl, period);
+        CHECK_MSG(worst < 1e-6, "growl %.1f: off the scaled pulse by %.3g", growl, worst);
+        CHECK_MSG(std::fabs(weakSum) <= 1e-3 * weakAbs + 1e-9, "growl %.1f: weak periods sum %.4g", growl, weakSum);
     }
 }
 

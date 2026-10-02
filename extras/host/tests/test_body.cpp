@@ -1,4 +1,5 @@
 // wind_pipe — tests/test_body.cpp  (plan: Tests / Body)
+#include <cmath>
 #include <vector>
 
 #include "core/wp_body.h"
@@ -172,27 +173,63 @@ WP_TEST(body_breath_reaches_zero) {
 }
 
 // positions are fractions of tract length, so a pose means the same thing at
-// every voice size: its formants scale with 1/N and little else (the lip and
-// throat regions are whole sections, so they quantize by up to one section).
+// every voice size, whole or not: its formants scale with 1/N and little else
+// (a section at a region's edge is in both in part, which is near, not exact).
 WP_TEST(body_pose_is_size_independent) {
     const float poses[][3] = {{0.30f, 2.41f, 1.5f}, {0.62f, 2.32f, 1.5f}, {0.52f, 2.15f, 0.5f}, {0.41f, 2.56f, 1.5f}};
     for (const float* p : poses) {
         Pose pose;
         pose.tongueX = p[0]; pose.tongueD = p[1]; pose.lipD = p[2];
-        float d[kMaxSections];
+        float d[kMaxSections], ends[2];
         shapeTract(pose, 22, d);
         const std::vector<double> ref = formants(22, d, kVelumShut);
-        for (int n = kTestedSizeMin; n <= kTestedSizeMax; ++n) {
-            shapeTract(pose, n, d);
-            const std::vector<double> f = formants(n, d, kVelumShut);
+        for (int quarter = 4 * kTestedSizeMin; quarter <= 4 * kTestedSizeMax; ++quarter) {
+            const float n = 0.25f * (float)quarter;
+            shapeTract(pose, n, d, nullptr, nullptr, Tuning(), ends);
+            const std::vector<double> f = formants(n, d, kVelumShut, kDefaultFs, 5000.0, Tuning(), ends);
             CHECK(f.size() >= 2 && ref.size() >= 2);
             if (f.size() < 2 || ref.size() < 2) continue;
             for (int k = 0; k < 2; ++k) {
                 const double scaled = f[(size_t)k] * n / 22.0;
-                CHECK_MSG(std::fabs(scaled / ref[(size_t)k] - 1.0) < 0.15, "pose %.2f/%.2f N=%d F%d: %.0f vs %.0f",
+                CHECK_MSG(std::fabs(scaled / ref[(size_t)k] - 1.0) < 0.15, "pose %.2f/%.2f N=%.2f F%d: %.0f vs %.0f",
                           p[0], p[1], n, k + 1, scaled, ref[(size_t)k]);
             }
         }
+    }
+}
+
+// a size moves the sound continuously. every change in whole sections — the
+// tract's, where the nose joins, the nose's — falls on a whole length, and
+// across each one from 15 to 47, a thousandth of a section wide, a pose's
+// response moves by less than 0.1 dB, the nasal ones too: the pieces at the
+// ends are exactly the sections that grow whole there.
+WP_TEST(body_size_moves_the_sound_continuously) {
+    const float poses[][4] = {{0.30f, 2.41f, 1.5f, kVelumShut}, {0.62f, 2.32f, 1.5f, kVelumShut},
+                              {0.52f, 2.15f, 0.5f, kVelumShut}, {0.41f, 2.56f, 1.5f, kVelumShut},
+                              {0.41f, 2.56f, 1.5f, kVelumOpen}, {0.62f, 2.32f, 0.0f, kVelumOpen}};
+    auto response = [](const Pose& pose, float length) {
+        float d[kMaxSections], ends[2];
+        shapeTract(pose, length, d, nullptr, nullptr, Tuning(), ends);
+        const std::vector<float> ir = impulseResponse(length, d, pose.velumD, 4096, Tuning(), ends);
+        const std::vector<double> mag = magnitudeSpectrum(ir.data(), (int)ir.size(), 8192);
+        std::vector<double> db;
+        for (size_t i = 22; i < 930; ++i) db.push_back(20.0 * std::log10(mag[i] + 1e-12));   // 120 .. 5000 Hz
+        return db;
+    };
+    for (const float* p : poses) {
+        Pose pose;
+        pose.tongueX = p[0]; pose.tongueD = p[1]; pose.lipD = p[2]; pose.velumD = p[3];
+        double worst = 0.0;
+        int worstAt = 0;
+        for (int whole = 15; whole <= 47; ++whole) {
+            const std::vector<double> a = response(pose, (float)whole - 0.0005f), b = response(pose, (float)whole + 0.0005f);
+            double sq = 0.0;
+            for (size_t i = 0; i < a.size(); ++i) sq += (a[i] - b[i]) * (a[i] - b[i]);
+            const double moved = std::sqrt(sq / (double)a.size());
+            if (moved > worst) { worst = moved; worstAt = whole; }
+        }
+        CHECK_MSG(worst < 0.1, "pose %.2f/%.2f lips %.1f velum %.3f: %.3f dB across N=%d", p[0], p[1], p[2], p[3], worst,
+                  worstAt);
     }
 }
 

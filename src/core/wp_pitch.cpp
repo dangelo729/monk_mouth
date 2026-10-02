@@ -7,7 +7,7 @@ void PitchAxis::init(float fs, float midi, const Tuning& t) {
     dt_ = (float)kBlock / fs;
     target_ = midi_ = midi;
     setGlide(kDefaultGlide);
-    vibPhase_ = vibDepth_ = sinceOnset_ = 0.0f;
+    vibPhase_ = vibDepth_ = sinceOnset_ = vib_ = 0.0f;
     slow_ = fast_ = 0.0f;
     f0_ = 440.0f * std::exp2((midi_ - 69.0f) / 12.0f);
     retune(t);
@@ -41,7 +41,8 @@ float PitchAxis::tick(Rng& rng, bool silent) {
     vibDepth_ = approach(vibDepth_, sinceOnset_ >= vibOnset_ ? 1.0f : 0.0f, vibFadeCoef_);
     vibPhase_ += vibRate_ * dt_;
     vibPhase_ -= std::floor(vibPhase_);
-    float cents = vibCents_ * vibDepth_ * std::sin(6.28318530717959f * vibPhase_);
+    vib_ = vibCents_ * vibDepth_ * std::sin(6.28318530717959f * vibPhase_);
+    float cents = vib_;
 
     // wobble: what keeps a held note alive. always drawn, so the stream of
     // random numbers — and with it every sample — does not depend on the amount.

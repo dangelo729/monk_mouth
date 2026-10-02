@@ -21,6 +21,7 @@ Tuning clamped(const Tuning& in, float fs) {
     Tuning t;
 
     t.glottisRest       = real(in.glottisRest, d.glottisRest);
+    t.growl             = real(in.growl, d.growl);
     t.aspirationGain    = real(in.aspirationGain, d.aspirationGain);
     // a band below zero or past half the sample rate is an unstable filter
     t.aspirationHz      = lim(in.aspirationHz, 0.0f, nyquist, d.aspirationHz);
@@ -37,6 +38,8 @@ Tuning clamped(const Tuning& in, float fs) {
     t.throatD           = real(in.throatD, d.throatD);
     t.throatUpperD      = real(in.throatUpperD, d.throatUpperD);
     t.velumRest         = real(in.velumRest, d.velumRest);
+    t.lipRound          = real(in.lipRound, d.lipRound);
+    t.gain              = real(in.gain, d.gain);
 
     t.turbulenceGain    = real(in.turbulenceGain, d.turbulenceGain);
     t.fricationHz       = lim(in.fricationHz, 0.0f, nyquist, d.fricationHz);

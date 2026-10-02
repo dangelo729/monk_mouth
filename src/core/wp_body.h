@@ -25,12 +25,28 @@ struct Pose {
     struct Slot { bool active = false; float place = 0.8f, degree = 1.5f; } slot[2];
 };
 
-// pose -> n diameters. optionally reports, per slot, the section nearest the
-// lips that it narrowed (-1: none) and the widest base diameter within its
-// reach. the throat below the tongue is the tuning's.
-void shapeTract(const Pose& pose, int n, float* diameters,
+// pose -> the layout's n diameters. optionally reports, per slot, the section
+// nearest the lips that it narrowed (-1: none) and the widest base diameter
+// within its reach, and the diameters a section past either end (the ends'
+// pieces: the glottis', the lips'). the throat below the tongue is the
+// tuning's. each region
+// begins at its landmark, and a section near one is in each region in part,
+// so a section crosses over smoothly as the length changes; at n = 22 every
+// section is wholly in one region, exactly as the reference has it.
+void shapeTract(const Pose& pose, const Layout& at, float* diameters,
                 int* slotEnd = nullptr, float* slotBaseMax = nullptr,
-                const Tuning& tuning = Tuning());
+                const Tuning& tuning = Tuning(), float* ends = nullptr);
+// the same, at a length's own layout (layoutFor)
+void shapeTract(const Pose& pose, float length, float* diameters,
+                int* slotEnd = nullptr, float* slotBaseMax = nullptr,
+                const Tuning& tuning = Tuning(), float* ends = nullptr);
+
+// a vowel's lips (lipD > 0) as a singer who holds them lipRound would make
+// them: its own at 0, pursed to kLipRoundD at 1, opened to kLipDMax at -1 —
+// a straight line on a log scale, as an opening is heard, and on past either
+// end. a vowel already rounder than kLipRoundD opens toward it, and the
+// result is not held: past the lips' range is the body's to hold.
+float vowelLips(float lipD, float lipRound);
 
 // ---- dynamics (§5) ------------------------------------------------------------------
 struct Channel {
@@ -80,8 +96,9 @@ class Body {
 public:
     enum { kSlot0 = 0, kSlot1 = 1, kLipSource = 2, kSources = 3 };
 
-    void init(int sections, float fs, const Tuning& t = Tuning());
+    void init(float sections, float fs, const Tuning& t = Tuning());
     void retune(const Tuning& t);                                 // block-rate: rates, gains, the burst's decay
+    void resize(float sections);                                  // block-rate: the same pose, at another length
 
     // ---- targets, raw units. rate <= 0 means the channel's default. -------------
     // glottis and velum are asked for from 0: the tuning's rest, not shut.
@@ -89,7 +106,7 @@ public:
     void setGlottis(float open01, float rate = 0.0f);
     void setTenseness(float t01, float rate = 0.0f);
     void setTongue(float tongueX, float tongueD, float rate = 0.0f);
-    void setLips(float lipD, float rate = 0.0f);                 // <= 0 closes
+    void setLips(float lipD, float rate = 0.0f, bool vowel = false);   // <= 0 closes; a vowel's, lipRound reshapes
     void setVelum(float open01, float rate = 0.0f);
     void setConstriction(int slot, float place, float degree, float rate = 0.0f);  // degree <= 0 closes
     void clearConstriction(int slot, float rate = 0.0f);
@@ -118,7 +135,9 @@ public:
     // ---- readback -------------------------------------------------------------------
     const Pose&  pose() const        { return pose_; }
     const float* diameters() const   { return d_; }
-    int   sections() const           { return n_; }
+    const float* ends() const        { return ends_; }             // the ends' pieces: the glottis' and the lips'
+    int   sections() const           { return n_; }                // whole: the diameters' count
+    const Layout& layout() const     { return at_; }
     float breath() const             { return breath_.x; }
     float breathTarget() const       { return breath_.target; }
     float glottisOpen() const        { return glottis_.x; }
@@ -137,20 +156,26 @@ private:
     };
 
     void fire(int section, float amplitude);
+    int   sectionAt(float place) const;
     float diameterAt(float place) const;
     float glottisTarget() const { return lerpf(t_.glottisRest, 1.0f, glottisAsk_); }
     float velumTarget() const   { return lerpf(kVelumShut, kVelumOpen, lerpf(t_.velumRest, 1.0f, velumAsk_)); }
+    float lipsTarget() const;
 
-    int   n_ = kDefaultSections;
+    Layout at_ = layoutFor(kDefaultSections);
+    int   n_ = at_.n;
     float fs_ = kDefaultFs, dt_ = kBlock / kDefaultFs;
     Tuning t_;
 
     Channel breath_, glottis_, tense_, tongueX_, tongueD_, lips_, velum_;
     float glottisAsk_ = 0.0f, velumAsk_ = 0.0f;   // the last asks, 0..1: a retune re-aims them from its rests
+    float lipsAsk_ = kLipDMax;                    // the last lips asked for, raw: a retune re-rounds a vowel's
+    bool  lipsVowel_ = false;
     SlotDyn slot_[2];
 
     Pose  pose_;
     float d_[kMaxSections];
+    float ends_[2] = {1.5f, 1.5f};
     float prevSource_[kSources];
     float pressure_ = 0.0f, hiss_ = 0.0f;
     bool  closed_ = false;

@@ -18,6 +18,11 @@
 // the source integrates to zero by construction.
 //
 // the closed form stays in the tree as the test oracle.
+//
+// growl weighs every other period: that pulse comes out 1 - growl as strong,
+// the whole period scaled, so it still integrates to zero. the pitch stays;
+// an octave under it joins the voice, and at 1 the note itself drops an
+// octave.
 #pragma once
 
 #include "wp_config.h"
@@ -36,6 +41,7 @@ public:
 
     // per block. both latch at the next period boundary.
     void setTargets(float f0Hz, float tenseness) { f0Next_ = f0Hz; tenseNext_ = tenseness; }
+    void setGrowl(float growl) { growl_ = growl; }  // latches at the next period boundary too
 
     inline float step() {                          // one sample of the bare pulse
         float out;
@@ -49,6 +55,7 @@ public:
             out = (shape_.shift - u_) * invDelta_ - shape_.dc;
             u_ += u_ * ud_;
         }
+        out *= gain_;                              // this period's weight, before the seam
         t_ += dt_;
         if (t_ >= 1.0f) { t_ -= 1.0f; beginPeriod(); }   // keeps the remainder: pitch is exact
         return out;
@@ -64,6 +71,8 @@ private:
     float fs_ = kDefaultFs;
     float f0_ = 110.0f, f0Next_ = 110.0f;
     float tense_ = kDefaultTenseness, tenseNext_ = kDefaultTenseness;
+    float growl_ = 0.0f, gain_ = 1.0f;
+    bool  odd_ = false;                            // the next period is the weak one
     LfShape shape_{};
     float t_ = 0.0f, dt_ = 0.0f;
     int   openLeft_ = 0;

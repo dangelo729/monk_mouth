@@ -1,4 +1,5 @@
 // wind_pipe — tests/test_tube.cpp  (plan: Tests / Tube)
+#include <cmath>
 #include <vector>
 
 #include "core/wp_glottis.h"
@@ -20,6 +21,38 @@ WP_TEST(tube_uniform_resonances) {
             CHECK_MSG(std::fabs(f[(size_t)j] - expect) < 0.02 * expect,
                       "N=%d F%d = %.1f Hz, expected %.1f", n, j + 1, f[(size_t)j], expect);
         }
+    }
+}
+
+// between whole lengths too: a uniform tube a quarter, a half and three
+// quarters of a section past each whole one resonates at (2n-1) Fs / 4L, +-2 %.
+// its ends' pieces are lengths, not approximations of the nearest whole one.
+WP_TEST(tube_uniform_resonances_between_whole_lengths) {
+    for (int whole = kTestedSizeMin; whole < kTestedSizeMax; ++whole) {
+        for (float part : {0.25f, 0.5f, 0.75f}) {
+            const float length = (float)whole + part;
+            const std::vector<float> d((size_t)layoutFor(length).n, 1.5f);
+            const std::vector<double> f = formants(length, d.data(), kVelumShut, kDefaultFs, 6000.0);
+            CHECK_MSG(f.size() >= 3, "N=%.2f found %d peaks", length, (int)f.size());
+            if (f.size() < 3) continue;
+            for (int j = 0; j < 3; ++j) {
+                const double expect = (2 * j + 1) * kDefaultFs / (4.0 * length);
+                CHECK_MSG(std::fabs(f[(size_t)j] - expect) < 0.02 * expect,
+                          "N=%.2f F%d = %.1f Hz, expected %.1f", length, j + 1, f[(size_t)j], expect);
+            }
+        }
+    }
+}
+
+// a whole length lays out as a tube built at it always has: every section
+// whole, the nose joined and as long as the reference's ratios round to.
+WP_TEST(tube_whole_lengths_lay_out_as_ever) {
+    for (int n = kMinSections; n <= kMaxSections; ++n) {
+        const Layout at = layoutFor((float)n);
+        CHECK_MSG(at.n == n && at.ns == (int)std::lround(n * 17.0 / 44.0) && at.m == (int)std::lround(n * 28.0 / 44.0),
+                  "N=%d lays out as %d, joined at %d, nose %d", n, at.n, at.ns, at.m);
+        CHECK_MSG(at.glottis == 0.0f && at.lips == 0.0f && at.nostrils == 0.0f, "N=%d has pieces left: %g %g %g", n,
+                  at.glottis, at.lips, at.nostrils);
     }
 }
 

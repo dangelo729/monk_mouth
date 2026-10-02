@@ -24,6 +24,7 @@ namespace wp {
 struct Tuning {
     // ---- larynx ---------------------------------------------------------------------
     float glottisRest       = 0.0f;     // how open the folds sit when voiced: standing breathiness
+    float growl             = 0.0f;     // every other pulse this much weaker: an octave under the note, heard as growl
     // the reference's noise gains are 0.2 and 0.66. measured against an open
     // vowel they put /s/ 19 dB down and /h/ 30 dB down; speech has them near 12
     // and 18. these defaults were set by that measurement (wptool trace).
@@ -41,6 +42,8 @@ struct Tuning {
     float throatD           = 0.6f;     // the tube just above the larynx: narrow is twang
     float throatUpperD      = 1.1f;     // the step up into the pharynx
     float velumRest         = 0.0f;     // how open the nose sits when shut: standing nasality
+    float lipRound          = 0.0f;     // how the lips hold a vowel: toward 1 every one pursed, toward -1 opened
+    float gain              = 1.0f;     // the pipe's output level, ahead of the clamp: 1 as built
 
     // ---- consonants -----------------------------------------------------------------
     float turbulenceGain    = 1.5f;     // fricative loudness

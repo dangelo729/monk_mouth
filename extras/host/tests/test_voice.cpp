@@ -18,7 +18,7 @@ float unit(Rng& r) { return 0.5f + 0.5f * r.bipolar(); }
 
 // one random gesture on the whole public surface
 void thrash(Voice& v, Rng& r) {
-    switch (r.next() % 17) {
+    switch (r.next() % 18) {
         case 0:  v.setBreath(unit(r) < 0.2f ? 0.0f : unit(r)); break;
         case 1:  v.setPitch(30.0f + 60.0f * unit(r)); break;
         case 2:  v.setGlottis(unit(r)); break;
@@ -36,6 +36,7 @@ void thrash(Voice& v, Rng& r) {
         case 14: v.noteOn(30.0f + 60.0f * unit(r), unit(r)); break;
         case 15: v.setGlottis(1.0f); v.setVelum(0.0f); v.setLips(0.2f + 0.3f * unit(r));        // a whistle
                  v.setTongue(0.6f + 0.4f * unit(r), 0.3f + 0.6f * unit(r)); v.setBreath(0.3f + unit(r)); break;
+        case 16: v.setSections(lerpf((float)kTestedSizeMin, (float)kTestedSizeMax, unit(r))); break;
         default: v.noteOff(); break;
     }
 }
@@ -93,6 +94,9 @@ WP_TEST(voice_target_steps_do_not_click) {
                     case 6: v.setBreath(hi ? 1.0f : 0.05f); break;
                     case 7: v.setPitch(hi ? 69.0f : 33.0f); break;
                     case 8: if (hi) v.setConstriction(0, 0.7f, 0.5f); else v.clearConstriction(0); break;
+                    case 9: v.setSections(hi ? n + 1 : n); break;                            // one section
+                    case 11: v.setSections(hi ? n + 0.5f : n); break;                        // half of one
+                    case 10: v.setSections(hi ? kTestedSizeMax : kTestedSizeMin); break;     // the whole range at once
                     default: break;                                  // 0: the held note itself
                 }
                 v.render(buf.data(), (int)buf.size());
@@ -102,7 +106,7 @@ WP_TEST(voice_target_steps_do_not_click) {
         };
         const float held = maxStep(0);
         CHECK(held > 0.0f);
-        for (int which = 1; which <= 8; ++which) {
+        for (int which = 1; which <= 11; ++which) {
             const float w = maxStep(which);
             CHECK_MSG(w < 3.0f * held && w < 0.5f, "N=%d target %d: step %.4f vs held note %.4f", n, which, w, held);
         }
@@ -243,6 +247,39 @@ WP_TEST(voice_state_readback) {
     CHECK_MSG(ws.whistle > 0.5f && ws.glottis > 0.99f && ws.voicing == 0.0f, "whistle %.3f glottis %.3f", ws.whistle, ws.glottis);
 }
 
+// the readback's vibrato is the one sung: nothing through the onset's wait,
+// then bloomed to the asked depth at the asked speed, and with no wobble it
+// is all of f0's swing off the note.
+WP_TEST(voice_state_reads_the_vibrato) {
+    Voice v;
+    float buf[kBlock];
+    v.setWobble(0.0f);
+    v.setVibrato(5.0f, 40.0f, 0.2f);
+    v.noteOn(57.0f, 0.8f);
+    const float blockSec = (float)kBlock / kDefaultFs;
+    float lo = 0.0f, hi = 0.0f, last = 0.0f, worst = 0.0f;
+    bool waited = true;
+    int crossings = 0;
+    for (int b = 0; (float)b * blockSec < 3.0f; ++b) {
+        v.render(buf, kBlock);
+        const BodyState s = v.state();
+        const float t = (float)(b + 1) * blockSec;
+        if (t < 0.19f) waited = waited && s.vibrato == 0.0f;
+        if (t >= 2.0f) {                                             // long bloomed
+            lo = s.vibrato < lo ? s.vibrato : lo;
+            hi = s.vibrato > hi ? s.vibrato : hi;
+            crossings += (last < 0.0f) != (s.vibrato < 0.0f);
+            const float off = 1200.0f * std::log2(s.f0 / (440.0f * std::exp2((s.midi - 69.0f) / 12.0f)));
+            if (std::fabs(off - s.vibrato) > worst) worst = std::fabs(off - s.vibrato);
+        }
+        last = s.vibrato;
+    }
+    CHECK(waited);
+    CHECK_MSG(hi > 39.5f && hi <= 40.0f && lo < -39.5f && lo >= -40.0f, "swing %.2f .. %.2f cents", lo, hi);
+    CHECK_MSG(crossings >= 9 && crossings <= 11, "%d crossings in a second at 5 hz", crossings);
+    CHECK_MSG(worst < 0.05f, "f0 off the note by the vibrato, within %.4f cents", worst);
+}
+
 // a target set between blocks lands at the top of the next block, for everything.
 WP_TEST(voice_one_latency) {
     Voice v;
@@ -299,6 +336,99 @@ WP_TEST(voice_sings_a_line_at_a_given_breath) {
         const double again = take(soft, 0.0f, againBreath);
         CHECK_MSG(std::fabs(againBreath - plainBreath) < 0.02f && std::fabs(toDb(again / loud)) < 1.0,
                   "N=%d plain sing after: breath %.3f, %.2f dB", n, againBreath, toDb(again / loud));
+    }
+}
+
+// a size set under a sounding voice keeps it sounding, and once the old
+// length has rung out it is the voice built at that size, sample for sample:
+// the pose, the pitch, the source and the noise never knew the size, and the
+// pipe keeps nothing of the length it had. a word is under way at the resize.
+// whole sizes and not.
+WP_TEST(voice_resized_is_the_voice_built_at_that_size) {
+    const float pairs[][2] = {{22, 30}, {22, 16}, {16, 40}, {40, 14}, {22, 22.5f}, {22.25f, 30.6f}, {30.6f, 17.3f}};
+    for (const auto& p : pairs) {
+        Voice a(p[0], 9), b(p[1], 9);
+        for (Voice* v : {&a, &b}) { v->noteOn(50.0f, 0.8f); v->syllable("M AA"); }
+        std::vector<float> xa(2 * 44100), xb(2 * 44100);
+        a.render(xa.data(), 11025);
+        b.render(xb.data(), 11025);
+        a.setSections(p[1]);
+        CHECK(a.sections() == p[1]);
+        a.render(xa.data() + 11025, (int)xa.size() - 11025);
+        b.render(xb.data() + 11025, (int)xb.size() - 11025);
+        float lastBlock[kMaxSections];
+        CHECK(a.diameters(lastBlock, kMaxSections) == layoutFor(p[1]).n);
+
+        const float around = rms(xa.data() + 11025 - 2205, 4410);            // 50 ms either side of the resize
+        float worst = 0.0f;
+        for (size_t i = xa.size() - 4410; i < xa.size(); ++i) {              // the last 100 ms
+            const float d = std::fabs(xa[i] - xb[i]);
+            if (d > worst) worst = d;
+        }
+        CHECK_MSG(around > 1e-3, "%.2f -> %.2f: silent across the resize (rms %.5f)", p[0], p[1], around);
+        CHECK_MSG(worst < 1e-5f, "%.2f -> %.2f: %.2e from the voice built at %.2f", p[0], p[1], worst, p[1]);
+
+        float lo, hi, loBuilt, hiBuilt;
+        a.whistleRange(lo, hi);
+        b.whistleRange(loBuilt, hiBuilt);
+        CHECK_MSG(lo == loBuilt && hi == hiBuilt, "%.2f -> %.2f: whistles as %.2f .. %.2f, built %.2f .. %.2f", p[0], p[1],
+                  lo, hi, loBuilt, hiBuilt);
+    }
+    Voice v(22, 1);
+    v.setSections(kMinSections - 5);
+    CHECK(v.sections() == kMinSections);
+    v.setSections(kMaxSections + 50);
+    CHECK(v.sections() == kMaxSections);
+}
+
+// a size set a little at a time slides: a held note, and one through the
+// nose, ride a slide from 20 to 26 sections over 3 s, a size every block, and
+// no step between samples is steeper than the voice's own steepest held edge.
+// a whistle held through a slide from 18 to 26 over 4 s stays locked in
+// nearly every block, on every row of its table.
+WP_TEST(voice_size_slides) {
+    auto steepest = [](Voice& v, int samples) {
+        std::vector<float> x((size_t)samples);
+        v.render(x.data(), samples);
+        float worst = 0.0f;
+        for (size_t i = 1; i < x.size(); ++i) worst = std::fmax(worst, std::fabs(x[i] - x[i - 1]));
+        return worst;
+    };
+    Voice yardstick(22, 3);
+    yardstick.setWobble(0.0f);
+    yardstick.noteOn(69.0f, 1.0f);
+    yardstick.setTenseness(1.0f);
+    const float held = steepest(yardstick, 2 * 44100);
+    for (bool nasal : {false, true}) {
+        Voice v(20, 3);
+        v.setWobble(0.0f);
+        v.noteOn(45.0f, 1.0f);
+        if (nasal) v.setVelum(1.0f);
+        std::vector<float> x(22050), b(kBlock);
+        v.render(x.data(), (int)x.size());
+        float prev = x.back(), worst = 0.0f;
+        const int blocks = 3 * 44100 / kBlock;
+        for (int k = 0; k < blocks; ++k) {
+            v.setSections(20.0f + 6.0f * (float)k / (float)blocks);
+            v.render(b.data(), kBlock);
+            for (float y : b) { worst = std::fmax(worst, std::fabs(y - prev)); prev = y; }
+        }
+        CHECK_MSG(worst < held, "%s: a step of %.4f in the slide, the held note's steepest %.4f", nasal ? "nasal" : "oral",
+                  worst, held);
+    }
+    for (int row = kWhistleMidiLo; row < kWhistleMidiLo + kWhistleCount; ++row) {
+        Voice v(18, 1);
+        v.whistle((float)row, 0.8f);
+        std::vector<float> x(22050), b(kBlock);
+        v.render(x.data(), (int)x.size());
+        const int blocks = 4 * 44100 / kBlock;
+        int locked = 0;
+        for (int k = 0; k < blocks; ++k) {
+            v.setSections(18.0f + 8.0f * (float)k / (float)blocks);
+            v.render(b.data(), kBlock);
+            if (v.state().whistle > 0.5f) ++locked;
+        }
+        CHECK_MSG(locked >= blocks * 95 / 100, "row %d: locked in %d of %d blocks", row, locked, blocks);
     }
 }
 

@@ -19,7 +19,7 @@ enum Chan : uint8_t {
     kChGlottis,         // a = open 0..1
     kChTenseness,       // a = 0..1
     kChTongue,          // a = tongueX, b = tongueD (raw anatomy units)
-    kChLips,            // a = lipD (raw; <= 0 closes)
+    kChLips,            // a = lipD (raw; <= 0 closes); b = kLipsVowel: a vowel's, the tuning's lipRound reshapes it
     kChVelum,           // a = open 0..1
     kChSlot0,           // a = place (or kSlotClear), b = degree (<= 0 closes)
     kChSlot1,
@@ -34,6 +34,7 @@ enum Chan : uint8_t {
     kChCount
 };
 constexpr float kSlotClear = -1.0f;
+constexpr float kLipsVowel = 1.0f;     // kChLips's b: these lips are a vowel's
 
 struct Event {
     uint32_t tick;              // samples since the score was committed

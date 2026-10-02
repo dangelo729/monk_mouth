@@ -23,16 +23,17 @@ public:
     // once per block. silent = no breath: the first note out of silence jumps.
     float tick(Rng& rng, bool silent);
 
-    float midi() const   { return midi_; }               // eased note, before vibrato and wobble
-    float target() const { return target_; }
-    float f0() const     { return f0_; }
+    float midi() const    { return midi_; }              // eased note, before vibrato and wobble
+    float target() const  { return target_; }
+    float vibrato() const { return vib_; }               // the vibrato's swing this block, in cents
+    float f0() const      { return f0_; }
 
 private:
     float dt_ = kBlock / kDefaultFs;
     float target_ = kDefaultMidi, midi_ = kDefaultMidi, f0_ = 130.81f;
     float glideCoef_ = 1.0f;
     float vibRate_ = kDefaultVibRate, vibCents_ = kDefaultVibCents, vibOnset_ = kDefaultVibOnset;
-    float vibPhase_ = 0.0f, vibDepth_ = 0.0f, vibFadeCoef_ = 1.0f, sinceOnset_ = 0.0f;
+    float vibPhase_ = 0.0f, vibDepth_ = 0.0f, vibFadeCoef_ = 1.0f, sinceOnset_ = 0.0f, vib_ = 0.0f;
     float wobble_ = kDefaultWobble;
     float slow_ = 0.0f, fast_ = 0.0f, slowCoef_ = 0.0f, fastCoef_ = 0.0f, slowNorm_ = 1.0f, fastNorm_ = 1.0f;
     float slowCents_ = 0.0f, fastCents_ = 0.0f;           // each drift's depth at wobble = 1
