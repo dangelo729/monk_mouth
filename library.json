@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "description": "An articulatory singing voice for the Teensy Audio Library. A float32 Kelly-Lochbaum vocal tract and Liljencrants-Fant glottis (ported from Pink Trombone), a body of eased pose targets as the whole control surface, and ARPABET words sung on notes through the same targets.",
   "keywords": "audio, synthesis, articulatory, waveguide, vocal tract, speech, singing, vocal, pink trombone, teensy",
-  "homepage": "https://github.com/peterdangelo/wind_pipe",
+  "homepage": "https://github.com/dangelo729/monk_mouth",
   "repository": {
     "type": "git",
-    "url": "https://github.com/peterdangelo/wind_pipe"
+    "url": "https://github.com/dangelo729/monk_mouth"
   },
   "authors": {
     "name": "Peter D'Angelo",
