@@ -12,10 +12,19 @@ namespace wp {
 // phones: ARPABET, space-separated, stress digits accepted; "_" = rest; "" = melisma
 struct Syllable { const char* phones; float midi; uint16_t ms; };
 
+// speak(): how a line is spoken. the stress digits set each syllable's length,
+// its accent and its loudness.
+struct Speech {
+    float midi   = 0.0f;  // the baseline: where an unaccented syllable sits as the line starts; <= 0: the voice's held note (setPitch)
+    float range  = 4.0f;  // semitones an accented syllable lifts above the baseline; the line's final fall goes below it in proportion
+    float speed  = 1.0f;  // 1 = conversational; 2 = twice as fast
+    float breath = 0.0f;  // the loudness of stressed syllables; <= 0: the voice's own level (as say() uses)
+};
+
 // the target table's channels. live setters and score events share them.
 enum Chan : uint8_t {
     kChBreath = 0,      // a = level 0..1
-    kChPitch,           // a = midi; b > 0 also restarts the vibrato onset clock (a new note)
+    kChPitch,           // a = midi; b > 0 also restarts the vibrato onset clock (a new note); b < 0: spoken, no vibrato, gliding at rate
     kChGlottis,         // a = open 0..1
     kChTenseness,       // a = 0..1
     kChTongue,          // a = tongueX, b = tongueD (raw anatomy units)
@@ -52,7 +61,9 @@ constexpr float kAffricateFricMs  = 70.0f;
 constexpr float kCodaTailMs       = 30.0f;   // a coda's release gets this long to sound
 constexpr float kMinVowelMs       = 80.0f;   // what compression leaves a vowel
 constexpr float kHoldFloor        = 0.35f;   // holds compress toward this fraction
-constexpr float kBreathLeadMs     = 30.0f;
+constexpr float kSilentLeadMs     = 30.0f;   // out of silence: a voiceless glottis opens, an onsetless vowel's pose moves, this long ahead
+constexpr float kSilentPoseRate   = 80.0f;   // out of silence: the vowel pose's rate, set before any air
+constexpr float kSealMs           = 10.0f;   // out of silence: a closure gets this long past its lead to seal before the breath
 constexpr float kVowelLeadMs      = 40.0f;   // an onsetless vowel's pose leads its beat
 constexpr float kVelumLeadMs      = 30.0f;
 constexpr float kVelumRate        = 35.0f;
@@ -64,6 +75,26 @@ constexpr float kScoreBreathFall  = 25.0f;   // per second: rests and endings
 constexpr float kSayVowelMs       = 150.0f;  // say(): default vowel lengths
 constexpr float kSayDiphthongMs   = 210.0f;
 constexpr float kSayRestMs        = 250.0f;
+
+// speak(): a plain declarative speaker. every length here is divided by the speed.
+constexpr float kSpeakPrimaryMs       = 120.0f;  // a vowel with primary stress (1, or no digit)
+constexpr float kSpeakSecondaryMs     = 90.0f;   // secondary (2)
+constexpr float kSpeakUnstressedMs    = 55.0f;   // unstressed (0)
+constexpr float kSpeakDiphthong       = 1.4f;    // a diphthong is this much longer
+constexpr float kSpeakFinal           = 1.5f;    // the line's last syllable: final lengthening
+constexpr float kSpeakPauseMs         = 200.0f;  // "_"
+constexpr float kSpeakDeclination     = 1.5f;    // semitones the baseline falls across the line
+constexpr float kSpeakAccentLeadMs    = 50.0f;   // an accent starts to rise this long before its vowel
+constexpr float kSpeakAccentRise      = 30.0f;   // per second: the glide up to an accent
+constexpr float kSpeakAccentAt        = 0.3f;    // the fall back starts this far into the accented vowel
+constexpr float kSpeakAccentFall      = 12.0f;   // per second: the glide back down to the baseline
+constexpr float kSpeakFinalDrop       = 0.5f;    // after the last accent: down to the baseline less range * this
+constexpr float kSpeakFinalReach      = 2.5f;    // ...this many time constants by the end of the last vowel
+constexpr float kSpeakSecondaryBreath = 0.85f;   // a secondary syllable's breath, of a primary's
+constexpr float kSpeakUnstressedBreath = 0.7f;   // an unstressed syllable's
+constexpr float kSpeakBreathRate      = 30.0f;   // per second: the breath from one syllable's level to the next
+constexpr float kSpeakSpeedMin        = 0.25f;   // the speeds a line is held to
+constexpr float kSpeakSpeedMax        = 4.0f;
 
 struct ScoreOptions {
     float fs = kDefaultFs;
@@ -88,6 +119,10 @@ int compileSay(const char* phones, float midi, const ScoreOptions& opt,
                Event* out, int maxEvents, ScoreInfo* info = nullptr);
 int compileSyllable(const char* phones, const ScoreOptions& opt,
                     Event* out, int maxEvents, ScoreInfo* info = nullptr);
+// opt.breath is a primary syllable's level; sp.midi <= 0 is kDefaultMidi (the
+// voice passes its held note), the speed is held to kSpeakSpeedMin .. Max.
+int compileSpeak(const char* phones, const Speech& sp, const ScoreOptions& opt,
+                 Event* out, int maxEvents, ScoreInfo* info = nullptr);
 
 // ---- the player ------------------------------------------------------------------------------
 // two buffers: the audio side plays one while the caller fills the other;

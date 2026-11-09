@@ -95,6 +95,8 @@ bool AudioSynthWindPipe::syllable(const char* phones)            { return voice_
 bool AudioSynthWindPipe::sing(const wp::Syllable* syls, int n)   { return voice_.sing(syls, n); }
 bool AudioSynthWindPipe::sing(const wp::Syllable* syls, int n, float breath) { return voice_.sing(syls, n, breath); }
 bool AudioSynthWindPipe::say(const char* phones)                 { return voice_.say(phones); }
+bool AudioSynthWindPipe::speak(const char* phones)               { return voice_.speak(phones); }
+bool AudioSynthWindPipe::speak(const char* phones, const wp::Speech& s) { return voice_.speak(phones, s); }
 void AudioSynthWindPipe::stop()                                  { IrqMask m; voice_.stop(); }
 bool AudioSynthWindPipe::busy() const                            { return voice_.busy(); }
 

@@ -138,6 +138,24 @@ bool Voice::say(const char* phones) {
     return true;
 }
 
+bool Voice::speak(const char* phones) { return speak(phones, Speech()); }
+
+// the baseline and the breath default to the voice's own: the note held, the
+// level say() would use. the voice's vibrato and glide stay as they were set.
+bool Voice::speak(const char* phones, const Speech& s) {
+    Event scratch[kMaxEvents];
+    Speech sp = s;
+    if (!(sp.midi > 0.0f)) sp.midi = midi_;
+    ScoreOptions opt;
+    opt.fs = fs_;
+    opt.diction = tuning_.diction;
+    opt.breath = s.breath > 0.0f ? s.breath : scoreBreath_;
+    const int count = compileSpeak(phones, sp, opt, scratch, kMaxEvents);
+    if (count < 0) return false;
+    player_.commit(scratch, count, ++seq_);
+    return true;
+}
+
 bool Voice::syllable(const char* phones) {
     Event scratch[kMaxEvents];
     ScoreOptions opt;
@@ -185,7 +203,10 @@ void Voice::latch() {
 void Voice::apply(uint8_t ch, float a, float b, float rate) {
     switch (ch) {
         case kChBreath:       body_.setBreath(a, rate); break;
-        case kChPitch:        pitch_.setTarget(a); if (b > 0.0f) pitch_.noteOn(); break;
+        case kChPitch:
+            if (b < 0.0f) pitch_.speakTarget(a, rate);
+            else { pitch_.setTarget(a); if (b > 0.0f) pitch_.noteOn(); }
+            break;
         case kChGlottis:      body_.setGlottis(a, rate); break;
         case kChTenseness:    body_.setTenseness(a, rate); break;
         case kChTongue:       body_.setTongue(a, b, rate); break;

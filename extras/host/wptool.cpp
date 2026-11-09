@@ -8,8 +8,10 @@
 //   wptool syllable "B AA" -o ba.wav
 //   wptool sing song.txt -o song.wav                    one "phones midi ms" per line
 //   wptool say "HH AH0 L OW1 / W ER1 L D" -o hello.wav
+//   wptool speak "S T AA1 P / DH AE2 T" --midi 50 --range 5 --speed 1 -o stop.wav   spoken, not sung
 //   wptool corpus corpus build/corpus                   everything, for the ear
 //   wptool trace "AA B AA"                              10 ms frames: what the body did, what came out
+//                                                       (--speak: through speak(), with --range --speed)
 //   wptool throat [step]                                sweep the throat: where the vowel gates hold
 //   wptool whistle --tongue .8 .6 --lips .2 -o w.wav    a live whistle pose: lock, level, pitch against the lip modes
 //   wptool whistle 84 -o w.wav                          a note through Voice::whistle and the table: the same report
@@ -52,7 +54,9 @@ struct Args {
     float midi = 48.0f, sec = 2.0f, breath = 0.8f, tense = -1.0f;
     float tonguePos = -1.0f, tongueHeight = -1.0f, lips = -1.0f, velum = -1.0f;
     float slotPlace = -1.0f, slotDegree = 0.0f;           // --slot: a free constriction (slot 0)
-    bool  secGiven = false;
+    bool  secGiven = false, midiGiven = false, breathGiven = false;
+    float range = Speech().range, speed = Speech().speed;   // speak
+    bool  speak = false;                                   // trace: through speak()
     bool  halfband = true, wobble = true;
     Tuning tuning;                                         // --tune: who is singing
     bool  tuned = false;
@@ -100,9 +104,12 @@ bool parseArgs(int argc, char** argv, Args& a) {
         else if (s == "--png") { if (i + 1 >= argc) return false; a.png = argv[++i]; }
         else if (s == "--size") { float v; if (!num(v)) return false; a.size = v; }
         else if (s == "--seed") { float v; if (!num(v)) return false; a.seed = (uint32_t)v; }
-        else if (s == "--midi") { if (!num(a.midi)) return false; }
+        else if (s == "--midi") { if (!num(a.midi)) return false; a.midiGiven = true; }
         else if (s == "--sec") { if (!num(a.sec)) return false; a.secGiven = true; }
-        else if (s == "--breath") { if (!num(a.breath)) return false; }
+        else if (s == "--breath") { if (!num(a.breath)) return false; a.breathGiven = true; }
+        else if (s == "--range") { if (!num(a.range)) return false; }
+        else if (s == "--speed") { if (!num(a.speed)) return false; }
+        else if (s == "--speak") a.speak = true;
         else if (s == "--tense") { if (!num(a.tense)) return false; }
         else if (s == "--tongue") { if (!num(a.tonguePos) || !num(a.tongueHeight)) return false; }
         else if (s == "--lips") { if (!num(a.lips)) return false; }
@@ -434,18 +441,43 @@ int cmdSay(const Args& a) {
     return finish(x, a);
 }
 
-// a frame-by-frame readout of a say(): what the body did and what came out.
-// the numbers an ear would judge: level, periodicity, where the energy sits.
+// speak(): the line at --midi (or the voice's note), --range, --speed, --breath (or the voice's level)
+bool startSpeaking(Voice& v, const Args& a) {
+    v.setPitch(a.midi);
+    Speech sp;
+    sp.midi = a.midiGiven ? a.midi : 0.0f;
+    sp.range = a.range;
+    sp.speed = a.speed;
+    sp.breath = a.breathGiven ? a.breath : 0.0f;
+    return v.speak(a.pos[0].c_str(), sp);
+}
+
+int cmdSpeak(const Args& a) {
+    if (a.pos.empty()) return 1;
+    Voice v(a.size, a.seed);
+    setup(v, a);
+    std::vector<float> x;
+    if (!startSpeaking(v, a)) { fprintf(stderr, "bad phonemes: %s\n", a.pos[0].c_str()); return 1; }
+    renderScore(v, x);
+    return finish(x, a);
+}
+
+// a frame-by-frame readout of a say() (or, --speak, a speak()): what the body
+// did and what came out. the numbers an ear would judge: level, periodicity,
+// where the energy sits.
 int cmdTrace(const Args& a) {
     if (a.pos.empty()) return 1;
     Voice v(a.size, a.seed);
     setup(v, a);
     v.setPitch(a.midi);
-    if (!v.say(a.pos[0].c_str())) { fprintf(stderr, "bad phonemes: %s\n", a.pos[0].c_str()); return 1; }
+    if (!(a.speak ? startSpeaking(v, a) : v.say(a.pos[0].c_str()))) {
+        fprintf(stderr, "bad phonemes: %s\n", a.pos[0].c_str());
+        return 1;
+    }
     const int frame = 441;                                 // 10 ms
     const int lagLo = (int)(kDefaultFs / 400.0f), lagHi = (int)(kDefaultFs / 60.0f);
     std::vector<float> x, hist;
-    printf("   ms  phone  level dB  period  centroid  breath voicing  hiss closed  press  slot0      slot1      lips velum  whistle  whistleHz\n");
+    printf("   ms  phone  level dB  period  centroid  breath voicing  hiss closed  press  slot0      slot1      lips velum  whistle  whistleHz  glottis   midi    vib\n");
     for (int f = 0; f < 1000; ++f) {
         std::vector<float> buf((size_t)frame);
         v.render(buf.data(), frame);
@@ -459,9 +491,9 @@ int cmdTrace(const Args& a) {
         char s0[16] = "    -    ", s1[16] = "    -    ";
         if (st.slotActive[0]) snprintf(s0, sizeof s0, "%.2f@%.2f", st.slotDegree[0], st.slotPlace[0]);
         if (st.slotActive[1]) snprintf(s1, sizeof s1, "%.2f@%.2f", st.slotDegree[1], st.slotPlace[1]);
-        printf("%5d  %-5s  %8.1f  %6.2f  %8.0f  %6.2f %7.2f %5.2f %6d  %5.2f  %-9s  %-9s  %4.2f %5.2f  %7.2f  %9.1f\n",
+        printf("%5d  %-5s  %8.1f  %6.2f  %8.0f  %6.2f %7.2f %5.2f %6d  %5.2f  %-9s  %-9s  %4.2f %5.2f  %7.2f  %9.1f  %7.2f  %5.2f  %5.1f\n",
                f * 10, phoneName(st.phoneme), level, per, cen, st.breath, st.voicing, st.hiss, (int)st.closed,
-               st.pressure, s0, s1, st.lips, st.velum, st.whistle, st.whistleHz);
+               st.pressure, s0, s1, st.lips, st.velum, st.whistle, st.whistleHz, st.glottis, st.midi, st.vibrato);
         if (!v.busy() && st.breath == 0.0f && level < -90.0) break;
     }
     if (a.out != "out.wav") return finish(x, a);
@@ -968,8 +1000,11 @@ void usage() {
         "wptool syllable \"B AA\" -o ba.wav\n"
         "wptool sing song.txt -o song.wav\n"
         "wptool say \"HH AH0 L OW1 / W ER1 L D\" -o hello.wav\n"
+        "wptool speak \"S T AA1 P / DH AE2 T\" [--midi M] [--range R] [--speed S] [--breath B] -o stop.wav\n"
+        "                                              spoken: stress sets length, accent and loudness\n"
         "wptool corpus <corpusDir> <outDir>\n"
         "wptool trace \"AA B AA\" [-o trace.wav]        10 ms frames: level, periodicity, centroid, body\n"
+        "             [--speak --range R --speed S]    the line through speak() instead of say()\n"
         "wptool throat [step]                          sweep the throat: where the vowel gates hold\n"
         "wptool whistle --tongue POS HEIGHT --lips L [--slot PLACE DEGREE] [--breath B] [--sec 1.5] -o w.wav\n"
         "                                              a live whistle pose: lock, level, pitch against the lip modes\n"
@@ -996,6 +1031,7 @@ int main(int argc, char** argv) {
     if (cmd == "syllable") return cmdSyllable(a);
     if (cmd == "sing")     return cmdSing(a);
     if (cmd == "say")      return cmdSay(a);
+    if (cmd == "speak")    return cmdSpeak(a);
     if (cmd == "corpus")   return cmdCorpus(a);
     if (cmd == "trace")    return cmdTrace(a);
     if (cmd == "throat")   return cmdThroat(a);

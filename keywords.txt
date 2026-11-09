@@ -11,6 +11,7 @@ AudioSynthWindPipe	KEYWORD1
 WindPipe	KEYWORD1
 Voice	KEYWORD1
 Syllable	KEYWORD1
+Speech	KEYWORD1
 BodyState	KEYWORD1
 Tuning	KEYWORD1
 VowelPose	KEYWORD1
@@ -43,6 +44,7 @@ whistleRange	KEYWORD2
 syllable	KEYWORD2
 sing	KEYWORD2
 say	KEYWORD2
+speak	KEYWORD2
 stop	KEYWORD2
 busy	KEYWORD2
 state	KEYWORD2

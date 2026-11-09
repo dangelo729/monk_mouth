@@ -110,6 +110,10 @@ public:
     bool sing(const Syllable* syls, int n);
     bool sing(const Syllable* syls, int n, float breath);    // at this breath; the voice's own level stays
     bool say(const char* phones);
+    // spoken, not sung: lengths, accents and loudness from the stress digits,
+    // a pitch that keeps moving, no vibrato while it plays
+    bool speak(const char* phones);                    // Speech() defaults
+    bool speak(const char* phones, const Speech& s);
     void stop();
     bool busy() const { return player_.busy(); }
     // readback

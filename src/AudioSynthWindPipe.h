@@ -21,7 +21,7 @@
 //                unmasked. a target set from the main loop lands at the top
 //                of the next block: one latency, for everything.
 //   state()      copies the published BodyState back the same way.
-//   words        sing / say / syllable run UNMASKED: the compile is long and
+//   words        sing / say / speak / syllable run UNMASKED: the compile is long and
 //                touches nothing the audio side reads. the commit is
 //                ScorePlayer::commit's flag protocol — withdraw the pending
 //                flag, fill the buffer the audio side is NOT playing, raise
@@ -82,6 +82,8 @@ public:
     bool sing(const wp::Syllable* syls, int n);
     bool sing(const wp::Syllable* syls, int n, float breath);   // at this breath; the voice's own level stays
     bool say(const char* phones);
+    bool speak(const char* phones);                     // spoken, not sung: wp::Speech() defaults
+    bool speak(const char* phones, const wp::Speech& s); // baseline, range, speed, breath (core/wp_score.h)
     void stop();
     bool busy() const;                      // a volatile read of a flag the audio side keeps
     // readback, as of the end of the last block

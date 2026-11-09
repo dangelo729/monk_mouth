@@ -27,7 +27,7 @@ the consequence.
 
 | | |
 |---|---|
-| engine, body, vocabulary, words, tunables, whistle | done; 75 host tests green (`make test`) |
+| engine, body, vocabulary, words, tunables, whistle | done; 92 host tests green (`make test`) |
 | Teensy wrapper + 4 examples | written; **compile clean for Teensy 4.1** (PlatformIO, `-Wall -Wextra`) |
 | hardware go / no-go (`99_Benchmark`: 4 voices ≤ 25 % CPU) | **not yet run** — needs a board |
 | by-ear passes | **not yet done** — levels were set by measurement against speech norms (see *Tuning*) |
@@ -97,6 +97,8 @@ bool syllable(const char* phones);      // now, at the current note
 bool sing(const Syllable* syls, int n); // {phones, midi, ms}
 bool sing(const Syllable* syls, int n, float breath);   // at this breath; the voice's own level stays
 bool say(const char* phones);           // "HH AH0 L OW1 / W ER1 L D"
+bool speak(const char* phones);         // spoken, not sung: "S T AA1 P / DH AE2 T"
+bool speak(const char* phones, const Speech& s);   // {midi, range, speed, breath}
 void stop();   bool busy() const;
 // readback
 BodyState state() const;                // eased pose, f0, vibrato, voicing, hiss, closed, phoneme, whistle, whistleHz
@@ -124,11 +126,55 @@ is a rest, `""` a melisma (only the pitch changes). In `say()`, consonants
 between vowels join the next syllable except at a `/` word end. The last onset
 consonant *releases on the beat*; the cluster before it borrows the previous
 note's tail; the vowel's pose is sent when the onset starts, so the tongue is
-already in place behind the closure. `sing()`, `say()` and `syllable()` return
-`false` on a bad phoneme or an overflow and then have disturbed nothing. One
-score holds 256 events (a CV syllable costs 5, a heavy one ~15), so a song
-goes in a line at a time: `sing()`, wait for `busy()` to fall, `sing()` again.
-Call them from the main loop, not an interrupt (≈ 10 KB of stack).
+already in place behind the closure. `sing()`, `say()`, `speak()` and
+`syllable()` return `false` on a bad phoneme or an overflow and then have
+disturbed nothing. One score holds 256 events (a CV syllable costs 5, a heavy
+one ~15), so a song goes in a line at a time: `sing()`, wait for `busy()` to
+fall, `sing()` again. Call them from the main loop, not an interrupt (≈ 10 KB
+of stack).
+
+Out of silence — a line's start, or after a rest — the mouth is ready before
+the air: the vowel's pose moves quickly, the breath comes once the first
+consonant has arrived (a closure shut, a hiss's channel narrowed), and a
+voiceless first consonant has the glottis open from the start, so nothing
+voices ahead of it; a voiced stop has its voice bar behind the closure. Into
+silence — the end, or a rest — a voiceless consonant keeps the glottis open
+until the breath has gone, so no voice comes back after its release. Before a
+vowel a stop still voices again `kVotMs` after it lets go. `syllable()` plays
+into a note that is already sounding and keeps its own timing.
+
+**Speaking.** `speak()` takes phones as `say()` does and says them as a plain
+declarative speaker would, where `say()` sings them on one note:
+
+```cpp
+wp::Speech s;                   // midi 0 (the held note), range 4, speed 1, breath 0 (the voice's level)
+s.midi  = 50;                   // the baseline
+s.range = 5;                    // semitones an accent lifts
+voice.speak("S T AA1 P / DH AE2 T", s);
+```
+
+- *Lengths from stress.* A vowel with primary stress (`1`, or no digit) is
+  120 ms, secondary (`2`) 90, unstressed (`0`) 55; a diphthong 1.4 times that,
+  the line's last syllable 1.5 times. Consonants keep their table timings;
+  `"_"` is a 200 ms pause. `speed` divides all of it (held to 0.25 – 4) and
+  runs every consonant's gesture that much faster.
+- *A pitch that keeps moving.* `midi` is the baseline (`<= 0`: the voice's
+  held note, `setPitch`), declining 1.5 semitones across the line. Each
+  primary syllable lifts to baseline + `range` as its vowel starts and falls
+  back through it; after the last accent the pitch falls to the baseline less
+  `range` / 2 by the end of the last vowel. Every move is a glide toward a
+  target at the line's own rates: the voice's `setGlide` is neither used nor
+  changed.
+- *No vibrato* while a line is spoken; the wobble stays. The voice's vibrato
+  is not changed: the next `noteOn()`, `sing()` or `setPitch()` has it exactly
+  as it was set.
+- *Loudness from stress.* `breath` is a stressed syllable's level (`<= 0`: the
+  voice's own, as `say()` uses, and left as it is); secondary syllables take
+  0.85 of it, unstressed 0.7. The line ends by falling away, clean.
+
+`busy()` and `stop()` work on a spoken line as on any score. The numbers are
+the `kSpeak*` constants in `wp_score.h`, beside the rest of the word timing,
+for tuning by ear.
 
 **Voice size** is in sections, given at construction: 22 = 17.5 cm (adult
 male), 19 ≈ 15 cm, 16 ≈ 12.7 cm; human throats run 16 to 26. Any size from 2
@@ -162,7 +208,7 @@ The rig lives in `extras/host`; the root `Makefile` forwards to it, so these
 work from either place.
 
 ```
-make test        # 80 tests: tube, glottis, body, voice, vocabulary, score, tuning, jet, whistle
+make test        # 92 tests: tube, glottis, body, voice, vocabulary, score, tuning, jet, whistle
 make tool        # extras/host/build/wptool
 make corpus      # every phoneme in three vowel contexts + the sung lines in
                  # extras/host/corpus/ -> extras/host/build/corpus/*.wav
@@ -178,7 +224,9 @@ wptool fit                                       grid-search every vowel pose; p
 wptool syllable "B AA" -o ba.wav
 wptool sing corpus/twinkle.txt -o song.wav       one "phones midi ms" per line; "-" melisma, "_" rest
 wptool say "HH AH0 L OW1 / W ER1 L D" -o hello.wav
+wptool speak "S T AA1 P / DH AE2 T" --midi 50 --range 5 -o stop.wav    spoken; also --speed S --breath B
 wptool trace "AA S AA"                           10 ms frames: level, periodicity, centroid, body state
+                                                 (--speak: the line through speak(), with its options)
 wptool throat [step]                             sweep the throat: the map of where the vowel gates hold
 wptool whistle --tongue .9 .6 --lips .3 -o w.wav a live whistle pose: lock, level, whistleHz against the lip modes
 wptool whistle 84 -o w.wav                       a note through whistle(): the same report
@@ -453,9 +501,12 @@ measured:
   tilt; raise `setTenseness` for a brighter, more pressed sound.
 - **The LF pulse aliases at high pitch.** Fine to ~500 Hz; above that the
   known fix (2× oversampling of the source alone) is not implemented.
-- **Words are loose.** No text→phoneme, General American only, no stress
-  handling beyond accepting the digits, no per-syllable dynamics. Live
-  `syllable()` cannot anticipate: the vowel lands after the onset.
+- **Words are loose.** No text→phoneme, General American only. `sing()` and
+  `say()` accept the stress digits and ignore them; `speak()` reads them for
+  length, accent and loudness and nothing finer — one phrase shape (a
+  declarative fall), no question rise. Its consonants keep the sung table's
+  holds, so a line at speed 1 is unhurried. Live `syllable()` cannot
+  anticipate: the vowel lands after the onset.
 - **Voice size is quantized** in steps of ~4.5 % (one section); nothing between.
 - **One score is 256 events** — a line at a time.
 - **The tongue body cannot close or hiss**; only the two slots and the lips can.

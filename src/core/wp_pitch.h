@@ -13,7 +13,13 @@ public:
     void init(float fs, float midi = kDefaultMidi, const Tuning& t = Tuning());
     void retune(const Tuning& t);                         // block-rate: the vibrato fade and both drifts
 
-    void setTarget(float midi)       { target_ = clampf(midi, 0.0f, 127.0f); }
+    void setTarget(float midi)       { target_ = clampf(midi, 0.0f, 127.0f); spoken_ = false; spokenGlide_ = 0.0f; }
+    // a spoken note: no vibrato, and it glides at its own rate (<= 0: the glide), until a note that is not
+    void speakTarget(float midi, float glidePerSec) {
+        target_ = clampf(midi, 0.0f, 127.0f);
+        spoken_ = true;
+        spokenGlide_ = glidePerSec > 0.0f ? approachCoef(glidePerSec, dt_) : 0.0f;
+    }
     void setGlide(float perSec);                          // 0 = jump
     void setVibrato(float rateHz, float cents)  { vibRate_ = rateHz; vibCents_ = cents; }
     void setVibratoOnset(float sec)  { vibOnset_ = sec; }
@@ -32,6 +38,8 @@ private:
     float dt_ = kBlock / kDefaultFs;
     float target_ = kDefaultMidi, midi_ = kDefaultMidi, f0_ = 130.81f;
     float glideCoef_ = 1.0f;
+    bool  spoken_ = false;                                // speakTarget: the vibrato fades out, and out of silence is gone
+    float spokenGlide_ = 0.0f;                            // its glide coefficient; 0 = the glide
     float vibRate_ = kDefaultVibRate, vibCents_ = kDefaultVibCents, vibOnset_ = kDefaultVibOnset;
     float vibPhase_ = 0.0f, vibDepth_ = 0.0f, vibFadeCoef_ = 1.0f, sinceOnset_ = 0.0f, vib_ = 0.0f;
     float wobble_ = kDefaultWobble;

@@ -6,6 +6,8 @@ namespace wp {
 void PitchAxis::init(float fs, float midi, const Tuning& t) {
     dt_ = (float)kBlock / fs;
     target_ = midi_ = midi;
+    spoken_ = false;
+    spokenGlide_ = 0.0f;
     setGlide(kDefaultGlide);
     vibPhase_ = vibDepth_ = sinceOnset_ = vib_ = 0.0f;
     slow_ = fast_ = 0.0f;
@@ -34,11 +36,13 @@ void PitchAxis::setGlide(float perSec) { glideCoef_ = approachCoef(perSec, dt_);
 float PitchAxis::tick(Rng& rng, bool silent) {
     // the note: eased in log frequency, which is linear in midi
     if (silent) midi_ = target_;
-    else midi_ = approach(midi_, target_, glideCoef_);
+    else midi_ = approach(midi_, target_, spokenGlide_ > 0.0f ? spokenGlide_ : glideCoef_);
 
-    // vibrato: a sine whose depth fades in once the onset delay has passed
+    // vibrato: a sine whose depth fades in once the onset delay has passed.
+    // a spoken note has none: it fades out, and out of silence it is gone.
     sinceOnset_ += dt_;
-    vibDepth_ = approach(vibDepth_, sinceOnset_ >= vibOnset_ ? 1.0f : 0.0f, vibFadeCoef_);
+    vibDepth_ = approach(vibDepth_, !spoken_ && sinceOnset_ >= vibOnset_ ? 1.0f : 0.0f, vibFadeCoef_);
+    if (spoken_ && silent) vibDepth_ = 0.0f;
     vibPhase_ += vibRate_ * dt_;
     vibPhase_ -= std::floor(vibPhase_);
     vib_ = vibCents_ * vibDepth_ * std::sin(6.28318530717959f * vibPhase_);
