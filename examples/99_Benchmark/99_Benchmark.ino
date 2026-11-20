@@ -1,45 +1,17 @@
-// ----------------------------------------------------------------------------
 // monk_mouth example 99 — Benchmark
-//
-// the hardware go / no-go (plan: stage 2, and the acceptance gate):
-//
-//   four voices, all voiced with the velum open and a fricative held,
-//   <= 25 % AudioProcessorUsageMax, steady for a minute, and flat as notes
-//   ring out.
-//
-// that pose is the worst case the engine has: the glottal pulse and the
-// aspiration band are running, the nose ladder is coupled in, a turbulence
-// source is injecting into the tube, and vibrato + wobble keep the pitch —
-// and so the per-period glottis setup — moving.
-//
-// three phases, a line per second, forever:
-//
-//   ONE    15 s   one voice in the worst case, the other three silent
-//                 (a silent voice skips its tube: near zero)
-//   FOUR   60 s   all four in the worst case          <- the gate: max <= 25 %
-//   RING   15 s   every note off. the tubes ring down into the silence gate.
-//                 CPU must FALL here. if it RISES, denormals are getting
-//                 through (FPDSCR flush-to-zero, AudioSynthMonkMouth.cpp).
-//
-// columns: phase, second, total % now, total % max this second, max this
-// phase, each voice's max this second, audio memory max.
-//
-// if FOUR misses 25 %, the plan's levers, in order: skip the nose ladder
-// while the velum is shut and the nose has rung out; interpolate k every
-// other sample; drop the halfband (send 'h' to toggle it here and see what
-// it buys).
-//
-// Teensy 4.1 + the SGTL5000 audio shield. build at 600 MHz, "Faster".
-// ----------------------------------------------------------------------------
+// four voices in their costliest pose (voiced, velum part open, a hiss held)
+// print AudioProcessorUsage once a second through three phases: one voice,
+// all four, then all four ringing out, where the load should fall, not rise.
+// send h to drop or restore the output halfband.
 
 #include <Audio.h>
 #include <MonkMouth.h>
 
 // four sizes of singer, four seeds: no two voices share a sample
-AudioSynthMonkMouth   voice0(22, 1);
-AudioSynthMonkMouth   voice1(22, 2);
-AudioSynthMonkMouth   voice2(19, 3);
-AudioSynthMonkMouth   voice3(26, 4);         // the longest tube is the dearest
+AudioSynthMonkMouth  voice0(22, 1);
+AudioSynthMonkMouth  voice1(22, 2);
+AudioSynthMonkMouth  voice2(19, 3);
+AudioSynthMonkMouth  voice3(26, 4);         // the longest tube is the dearest
 AudioMixer4          mixer;
 AudioOutputI2S       i2s;
 AudioConnection      patchCord1(voice0, 0, mixer, 0);

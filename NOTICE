@@ -92,3 +92,19 @@ Only the published table values are used, as specification data.
 --------------------------------------------------------------------------
 Phoneme names follow the ARPABET symbol set as used by the CMU Pronouncing
 Dictionary. No dictionary data is included.
+
+--------------------------------------------------------------------------
+4. The whistle (references)
+--------------------------------------------------------------------------
+The whistle's jet drive (src/core/mm_jet.*) follows:
+
+  - Fletcher and Rossing, "The Physics of Musical Instruments": the flue
+    jet, its 0.4 convection, the tanh saturation.
+  - McIntyre, Schumacher and Woodhouse (1983), "On the oscillations of
+    musical instruments": a resonator coupled to a delayed nonlinearity.
+  - Cook's STK `Flute`: the digital form and its loop filter.
+
+The front cavity as the whistle's resonator is from:
+
+  - Shadle (1983), "Experiments on the acoustics of whistling."
+  - Wilson et al. (1971), "Experiments on the fluid mechanics of whistling."

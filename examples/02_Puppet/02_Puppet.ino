@@ -1,55 +1,13 @@
-// ----------------------------------------------------------------------------
 // monk_mouth example 02 — Puppet
-//
-// serial commands -> targets: play the body by hand, and babble.
-// (Teensy 4.1 + the SGTL5000 audio shield; serial monitor at any baud, line
-// ending = newline.)
-//
-// the body has no events. every command below sets a target; each part moves
-// toward its target at its own rate, and the sound is whatever the tube does
-// on the way. one command per line, letter first, numbers space-separated:
-//
-//   b <0..1>                 breath — the loudness axis       setBreath
-//   p <midi>                 pitch                            setPitch
-//   g <0..1>                 glottis: 0 voiced .. 1 open      setGlottis
-//   t <0..1>                 tenseness: breathy .. pressed    setTenseness
-//   T <pos> <height>         tongue: 0 back .. 1 front,       setTongue
-//                                    0 low .. 1 high
-//   l <0..1>                 lips: 0 closed .. 1 open         setLips
-//   v <0..1>                 velum: 0 shut .. 1 open          setVelum
-//   c <slot> <place> <deg>   constriction, slot 0 or 1,       setConstriction
-//                            place 0 glottis .. 1 lips,
-//                            deg <= 0 closes
-//   x <slot>                 let the constriction go          clearConstriction
-//   G <perSec>               pitch glide rate, 0 = jump       setGlide
-//   V <hz> <cents> <onset>   vibrato                          setVibrato
-//   w <0..1>                 wobble                           setWobble
-//   n <midi> [vel]           note on (vel defaults to 0.8)    noteOn
-//   o                        note off                         noteOff
-//   s <phones>               one syllable, now, this note     syllable
-//   S <phones>               say, at the current pitch        say
-//   !                        stop the words, close down       stop
-//   ? [ms]                   print the body once, or every <ms> (0 = off)
-//   d                        print the tract's diameters, glottis to lips
-//   h                        this list
-//
-// things to try, a line at a time:
-//   n 45            a note on the rest shape: "uh"
-//   T 0.9 0.95      the tongue goes high and front: "ee"
-//   T 0.1 0.8       low and back: "ah"
-//   l 0             lips shut: the sound stops, pressure builds (watch ?)
-//   l 1             lips open: "b". the burst is the consequence.
-//   c 0 0.82 0      tongue tip to the ridge, shut ...
-//   x 0             ... and let go: "d"
-//   c 0 0.82 0.15   the same place, not quite shut: "z"; then  g 1  makes it "s"
-//   v 1             velum open; now  l 0  hums instead of stopping: "m"
-//   s B AA          the same things, scripted:  s S T R IY T   S HH AH L OW / W ER L D
-// ----------------------------------------------------------------------------
+// play the mouth by hand from the serial monitor, a command per line (newline
+// line endings): a letter and its numbers. n 45 starts a note, T 0.9 0.95
+// moves the tongue high and front, l 0 shuts the lips and l 1 opens them,
+// s B AA plays a syllable. h prints the list; handle() below is all of it.
 
 #include <Audio.h>
 #include <MonkMouth.h>
 
-AudioSynthMonkMouth   voice;
+AudioSynthMonkMouth  voice;
 AudioMixer4          mixer;
 AudioOutputI2S       i2s;
 AudioConnection      patchCord1(voice, 0, mixer, 0);

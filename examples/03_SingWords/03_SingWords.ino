@@ -1,30 +1,12 @@
-// ----------------------------------------------------------------------------
 // monk_mouth example 03 — SingWords
-//
-// sing() a line: words on notes. (Teensy 4.1 + the SGTL5000 audio shield.)
-//
-// a mm::Syllable is { phones, midi, ms }:
-//   phones  ARPABET, space-separated; stress digits are accepted and ignored.
-//           "_" is a rest, "" is a melisma (the vowel carries on, only the
-//           pitch changes).
-//   midi    the note.
-//   ms      the time from this syllable's beat to the next one's.
-//
-// the words are compiled into a timed list of the very same targets example
-// 02 sets by hand — tongue, lips, velum, two constrictions, glottis, breath —
-// and played into the same table. the last consonant of each onset releases
-// ON the beat; the consonants before it borrow time from the previous note.
-//
-// one score holds 256 events, roughly a dozen syllables, so a song goes to
-// the voice a line at a time: sing() a line, wait for busy() to fall, sing
-// the next. sing() returns false on a bad phoneme or an overflow, and then
-// it has disturbed nothing.
-// ----------------------------------------------------------------------------
+// sing() a song a line at a time. each mm::Syllable is {phones, midi, ms}:
+// ARPABET phones, "_" a rest and "" a melisma (one vowel, a new note). one
+// score holds 256 events, so the next line goes in when busy() falls.
 
 #include <Audio.h>
 #include <MonkMouth.h>
 
-AudioSynthMonkMouth   voice;
+AudioSynthMonkMouth  voice;
 AudioMixer4          mixer;
 AudioOutputI2S       i2s;
 AudioConnection      patchCord1(voice, 0, mixer, 0);
