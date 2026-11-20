@@ -1,7 +1,7 @@
-// wind_pipe — wp_noise.cpp  (plan §3)
-#include "wp_noise.h"
+// monk_mouth — mm_noise.cpp  (plan §3)
+#include "mm_noise.h"
 
-namespace wp {
+namespace mm {
 
 void Bandpass::set(float fs, float hz, float q) {
     const float w0 = 2.0f * 3.14159265358979f * hz / fs;
@@ -22,4 +22,4 @@ void Noise::retune(float fs, const Tuning& t) {
     fric_.set(fs, t.fricationHz, t.fricationQ);
 }
 
-}  // namespace wp
+}  // namespace mm

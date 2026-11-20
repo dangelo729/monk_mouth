@@ -1,7 +1,7 @@
-// wind_pipe — wp_jet.cpp  (whistle plan §3, §4)
-#include "wp_jet.h"
+// monk_mouth — mm_jet.cpp  (whistle plan §3, §4)
+#include "mm_jet.h"
 
-namespace wp {
+namespace mm {
 namespace {
 
 // the swing is read against at least this flow: 0.1 l/s, under a soft
@@ -78,4 +78,4 @@ void Jet::endBlock() {
     periods_ = 0;
 }
 
-}  // namespace wp
+}  // namespace mm

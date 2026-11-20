@@ -1,7 +1,7 @@
-// wind_pipe — wp_glottis.cpp  (plan §2)
-#include "wp_glottis.h"
+// monk_mouth — mm_glottis.cpp  (plan §2)
+#include "mm_glottis.h"
 
-namespace wp {
+namespace mm {
 
 // Glottis.setupWaveform, line for line. normalized to time = 1, Ee = 1.
 LfShape lfSetup(float tenseness) {
@@ -97,4 +97,4 @@ void Glottis::beginPeriod() {
     ud_ = std::expm1(-shape_.epsilon * dt_);
 }
 
-}  // namespace wp
+}  // namespace mm

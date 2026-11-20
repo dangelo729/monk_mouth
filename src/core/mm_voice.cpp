@@ -1,7 +1,7 @@
-// wind_pipe — wp_voice.cpp  (plan §7; whistle plan §3, §4, §6)
-#include "wp_voice.h"
+// monk_mouth — mm_voice.cpp  (plan §7; whistle plan §3, §4, §6)
+#include "mm_voice.h"
 
-namespace wp {
+namespace mm {
 
 // the table was fitted at kDefaultSections: every mode of a voice N long
 // scales by kDefaultSections / N, so its note sits this far up the table
@@ -436,4 +436,4 @@ void Voice::render(float* out, int n) {
     }
 }
 
-}  // namespace wp
+}  // namespace mm

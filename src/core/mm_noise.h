@@ -1,13 +1,13 @@
-// wind_pipe — wp_noise.h  (plan §3)
+// monk_mouth — mm_noise.h  (plan §3)
 // white xorshift32 into two RBJ bandpass biquads — aspiration and frication —
 // plus the reference's noise modulator and turbulence window. nothing here
 // calls libm per sample.
 #pragma once
 
-#include "wp_config.h"
-#include "wp_tuning.h"
+#include "mm_config.h"
+#include "mm_tuning.h"
 
-namespace wp {
+namespace mm {
 
 // RBJ bandpass, constant 0 dB peak gain (what WebAudio's "bandpass" is).
 class Bandpass {
@@ -57,4 +57,4 @@ inline float turbulenceWindow(float d) {
     return clampf(30.0f * d, 0.0f, 1.0f) * clampf(8.0f * (0.4f - d), 0.0f, 1.0f);
 }
 
-}  // namespace wp
+}  // namespace mm

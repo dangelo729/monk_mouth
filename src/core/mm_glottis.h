@@ -1,4 +1,4 @@
-// wind_pipe — wp_glottis.h  (plan §2)
+// monk_mouth — mm_glottis.h  (plan §2)
 // the Liljencrants-Fant pulse with one knob, ported from Pink Trombone's
 // Glottis.setupWaveform. the reference evaluates exp and sin per sample; here
 // the same waveform runs as recurrences reseeded from the closed form every
@@ -25,9 +25,9 @@
 // octave.
 #pragma once
 
-#include "wp_config.h"
+#include "mm_config.h"
 
-namespace wp {
+namespace mm {
 
 struct LfShape { float alpha, E0, epsilon, shift, Delta, Te, omega, dc; };
 
@@ -80,4 +80,4 @@ private:
     float u_ = 0.0f, ud_ = 0.0f, invDelta_ = 1.0f;
 };
 
-}  // namespace wp
+}  // namespace mm

@@ -1,9 +1,9 @@
-# wind_pipe — extras/host/Makefile
+# monk_mouth — extras/host/Makefile
 # the host rig (plan §11). everything but the Teensy wrapper compiles here with
 # clang and nothing else.
 #
 #   make test     build and run every test in tests/
-#   make tool     build/wptool, the one CLI
+#   make tool     build/mmtool, the one CLI
 #   make corpus   render every phoneme in three vowel contexts plus the sung
 #                 lines in corpus/ into build/corpus/ — for the ear
 #   make clean
@@ -20,19 +20,19 @@ TEST_SRC := $(wildcard tests/*.cpp)
 
 CORE_OBJ := $(patsubst ../../src/core/%.cpp,$(BUILD)/core_%.o,$(CORE_SRC))
 TEST_OBJ := $(patsubst tests/%.cpp,$(BUILD)/test_%.o,$(TEST_SRC))
-HOST_OBJ := $(BUILD)/wp_wav.o
+HOST_OBJ := $(BUILD)/mm_wav.o
 
 .PHONY: all test tool corpus clean
 
-all: $(BUILD)/run_tests $(BUILD)/wptool
+all: $(BUILD)/run_tests $(BUILD)/mmtool
 
 test: $(BUILD)/run_tests
 	./$(BUILD)/run_tests
 
-tool: $(BUILD)/wptool
+tool: $(BUILD)/mmtool
 
-corpus: $(BUILD)/wptool
-	./$(BUILD)/wptool corpus corpus $(BUILD)/corpus
+corpus: $(BUILD)/mmtool
+	./$(BUILD)/mmtool corpus corpus $(BUILD)/corpus
 
 clean:
 	rm -rf $(BUILD)
@@ -40,7 +40,7 @@ clean:
 $(BUILD)/run_tests: $(TEST_OBJ) $(CORE_OBJ) $(HOST_OBJ)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
-$(BUILD)/wptool: $(BUILD)/wptool.o $(CORE_OBJ) $(HOST_OBJ)
+$(BUILD)/mmtool: $(BUILD)/mmtool.o $(CORE_OBJ) $(HOST_OBJ)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
 # -MMD -MP emits header dependency files (build/*.d), included at the bottom.

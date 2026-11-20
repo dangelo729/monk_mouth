@@ -1,12 +1,12 @@
-// wind_pipe — tests/test_body.cpp  (plan: Tests / Body)
+// monk_mouth — tests/test_body.cpp  (plan: Tests / Body)
 #include <cmath>
 #include <vector>
 
-#include "core/wp_body.h"
-#include "wp_analysis.h"
-#include "wp_test.h"
+#include "core/mm_body.h"
+#include "mm_analysis.h"
+#include "mm_test.h"
 
-using namespace wp;
+using namespace mm;
 
 namespace {
 
@@ -33,7 +33,7 @@ float minDiameter(const Body& b) {
 }  // namespace
 
 // a -0.3 target closes in finite time — and holds, and releases at a defined instant.
-WP_TEST(body_closure_arrives_in_finite_time) {
+MM_TEST(body_closure_arrives_in_finite_time) {
     for (int n : {16, 22, 26}) {
         for (float place : {0.5f, 0.72f, 0.82f, 0.93f}) {
             Rig r(n);
@@ -54,7 +54,7 @@ WP_TEST(body_closure_arrives_in_finite_time) {
 }
 
 // a cleared slot goes back up and deactivates once it clears the base shape.
-WP_TEST(body_slot_lifecycle) {
+MM_TEST(body_slot_lifecycle) {
     Rig r;
     float before[kMaxSections];
     r.run(0.05f);
@@ -72,7 +72,7 @@ WP_TEST(body_slot_lifecycle) {
 }
 
 // one release fires exactly one transient; none with the velum open.
-WP_TEST(body_release_fires_one_transient) {
+MM_TEST(body_release_fires_one_transient) {
     for (int source = 0; source < 3; ++source) {
         for (int nasal = 0; nasal < 2; ++nasal) {
             Rig r;
@@ -94,7 +94,7 @@ WP_TEST(body_release_fires_one_transient) {
 }
 
 // long closures and voiceless closures burst harder.
-WP_TEST(body_pressure_scales_bursts) {
+MM_TEST(body_pressure_scales_bursts) {
     auto pressureAfter = [](float hold, float glottisOpen) {
         Rig r;
         r.body.setBreath(1.0f);
@@ -115,7 +115,7 @@ WP_TEST(body_pressure_scales_bursts) {
 }
 
 // turbulence is zero when shut, when wide, and when breath is 0.
-WP_TEST(body_turbulence_window) {
+MM_TEST(body_turbulence_window) {
     auto turb = [](float degree, float breath) {
         Rig r;
         r.body.setBreath(breath);
@@ -161,7 +161,7 @@ WP_TEST(body_turbulence_window) {
 }
 
 // a breath of 0 arrives: it aims below zero like a closure does.
-WP_TEST(body_breath_reaches_zero) {
+MM_TEST(body_breath_reaches_zero) {
     Rig r;
     r.body.setBreath(1.0f);
     r.run(0.3f);
@@ -175,7 +175,7 @@ WP_TEST(body_breath_reaches_zero) {
 // positions are fractions of tract length, so a pose means the same thing at
 // every voice size, whole or not: its formants scale with 1/N and little else
 // (a section at a region's edge is in both in part, which is near, not exact).
-WP_TEST(body_pose_is_size_independent) {
+MM_TEST(body_pose_is_size_independent) {
     const float poses[][3] = {{0.30f, 2.41f, 1.5f}, {0.62f, 2.32f, 1.5f}, {0.52f, 2.15f, 0.5f}, {0.41f, 2.56f, 1.5f}};
     for (const float* p : poses) {
         Pose pose;
@@ -203,7 +203,7 @@ WP_TEST(body_pose_is_size_independent) {
 // across each one from 15 to 47, a thousandth of a section wide, a pose's
 // response moves by less than 0.1 dB, the nasal ones too: the pieces at the
 // ends are exactly the sections that grow whole there.
-WP_TEST(body_size_moves_the_sound_continuously) {
+MM_TEST(body_size_moves_the_sound_continuously) {
     const float poses[][4] = {{0.30f, 2.41f, 1.5f, kVelumShut}, {0.62f, 2.32f, 1.5f, kVelumShut},
                               {0.52f, 2.15f, 0.5f, kVelumShut}, {0.41f, 2.56f, 1.5f, kVelumShut},
                               {0.41f, 2.56f, 1.5f, kVelumOpen}, {0.62f, 2.32f, 0.0f, kVelumOpen}};
@@ -234,7 +234,7 @@ WP_TEST(body_size_moves_the_sound_continuously) {
 }
 
 // the anatomy's landmarks fall where the reference puts them, at the reference's own size ratio.
-WP_TEST(body_anatomy_landmarks) {
+MM_TEST(body_anatomy_landmarks) {
     Pose rest;
     float d[kMaxSections];
     shapeTract(rest, 22, d);

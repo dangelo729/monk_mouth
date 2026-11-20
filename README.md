@@ -1,4 +1,4 @@
-# wind_pipe
+# monk_mouth
 
 An articulatory singing voice for the Teensy Audio Library (Teensy 4.1).
 
@@ -20,8 +20,7 @@ the consequence.
 - **Host-first.** Everything but one wrapper file compiles on a Mac with clang
   and nothing else, renders WAVs, and passes tests.
 
-`wind_pipe` is a working name (library `WindPipe`, namespace `wp`, class
-`AudioSynthWindPipe`); renaming is a search and replace.
+The library is `MonkMouth`: namespace `mm`, class `AudioSynthMonkMouth`.
 
 ## Status
 
@@ -39,9 +38,9 @@ voice, most of it the two 256-event score buffers).
 
 ```cpp
 #include <Audio.h>
-#include <WindPipe.h>
+#include <MonkMouth.h>
 
-AudioSynthWindPipe   voice;                 // (sections = 22, seed = 1)
+AudioSynthMonkMouth   voice;                 // (sections = 22, seed = 1)
 AudioOutputI2S       i2s;
 AudioConnection      c1(voice, 0, i2s, 0), c2(voice, 0, i2s, 1);
 AudioControlSGTL5000 codec;
@@ -54,7 +53,7 @@ void setup() {
 }
 
 void loop() {
-    static const wp::Syllable line[] = {
+    static const mm::Syllable line[] = {
         {"HH AH", 48, 300}, {"L OW", 52, 600}, {"_", 0, 250}, {"W ER L D", 55, 1000}};
     if (!voice.busy()) { voice.sing(line, 4); delay(4000); }
 }
@@ -84,14 +83,14 @@ void setGlide(float perSec);            // 0 = jump
 void setVibrato(float rateHz, float cents, float onsetSec);
 void setWobble(float amount01);
 // who is singing: every tunable at once (see Tuning)
-void   setTuning(const wp::Tuning& t);
+void   setTuning(const mm::Tuning& t);
 Tuning tuning() const;                  // the last one asked for, as held
 void   setSections(float sections);     // the size, live, whole or not (see Voice size)
 // conveniences
 void noteOn(float midi, float vel01);   // pitch + breath + vibrato onset
 void noteOff();                         // breath to 0
 void whistle(float midi, float breath); // a whistle pose for this note from the table, and breath; ends any words in flight
-void whistleRange(float& lo, float& hi) const;   // the notes whistle() reaches without folding (wp::Voice only)
+void whistleRange(float& lo, float& hi) const;   // the notes whistle() reaches without folding (mm::Voice only)
 // words
 bool syllable(const char* phones);      // now, at the current note
 bool sing(const Syllable* syls, int n); // {phones, midi, ms}
@@ -103,7 +102,7 @@ void stop();   bool busy() const;
 // readback
 BodyState state() const;                // eased pose, f0, vibrato, voicing, hiss, closed, phoneme, whistle, whistleHz
 int  diameters(float* out, int max) const;
-// the engine (wp::Voice only)
+// the engine (mm::Voice only)
 void render(float* out, int n);
 ```
 
@@ -147,7 +146,7 @@ into a note that is already sounding and keeps its own timing.
 declarative speaker would, where `say()` sings them on one note:
 
 ```cpp
-wp::Speech s;                   // midi 0 (the held note), range 4, speed 1, breath 0 (the voice's level)
+mm::Speech s;                   // midi 0 (the held note), range 4, speed 1, breath 0 (the voice's level)
 s.midi  = 50;                   // the baseline
 s.range = 5;                    // semitones an accent lifts
 voice.speak("S T AA1 P / DH AE2 T", s);
@@ -173,7 +172,7 @@ voice.speak("S T AA1 P / DH AE2 T", s);
   0.85 of it, unstressed 0.7. The line ends by falling away, clean.
 
 `busy()` and `stop()` work on a spoken line as on any score. The numbers are
-the `kSpeak*` constants in `wp_score.h`, beside the rest of the word timing,
+the `kSpeak*` constants in `mm_score.h`, beside the rest of the word timing,
 for tuning by ear.
 
 **Voice size** is in sections, given at construction: 22 = 17.5 cm (adult
@@ -185,7 +184,7 @@ is linear in it). Poses mean the same thing at every size; formants scale with
 the analysis's 120 – 5000 Hz window still sees every formant.
 
 A size between whole ones is laid out whole sections first
-(`wp_tube.h`'s `Layout`); what is left lives at the three open ends — the
+(`mm_tube.h`'s `Layout`); what is left lives at the three open ends — the
 glottis, the lips, the nostrils — as a piece of a section, a round trip read
 between samples, as wide as the shape is there and joined to its end section by
 a junction that grows in with the piece. The nose joins and runs at the
@@ -209,37 +208,37 @@ work from either place.
 
 ```
 make test        # 92 tests: tube, glottis, body, voice, vocabulary, score, tuning, jet, whistle
-make tool        # extras/host/build/wptool
+make tool        # extras/host/build/mmtool
 make corpus      # every phoneme in three vowel contexts + the sung lines in
                  # extras/host/corpus/ -> extras/host/build/corpus/*.wav
 ```
 
-The `wptool` lines below are run from `extras/host` (`./build/wptool ...`).
+The `mmtool` lines below are run from `extras/host` (`./build/mmtool ...`).
 
 ```
-wptool vowel AA --midi 48 --sec 2 -o aa.wav      ("rest" = the reference's rest shape)
-wptool pose --tongue .3 .8 --lips .9 -o pose.wav
-wptool formants --tongue .3 .8 --lips .9         F1..F4 of a static shape (or: formants AA)
-wptool fit                                       grid-search every vowel pose; prints the table
-wptool syllable "B AA" -o ba.wav
-wptool sing corpus/twinkle.txt -o song.wav       one "phones midi ms" per line; "-" melisma, "_" rest
-wptool say "HH AH0 L OW1 / W ER1 L D" -o hello.wav
-wptool speak "S T AA1 P / DH AE2 T" --midi 50 --range 5 -o stop.wav    spoken; also --speed S --breath B
-wptool trace "AA S AA"                           10 ms frames: level, periodicity, centroid, body state
+mmtool vowel AA --midi 48 --sec 2 -o aa.wav      ("rest" = the reference's rest shape)
+mmtool pose --tongue .3 .8 --lips .9 -o pose.wav
+mmtool formants --tongue .3 .8 --lips .9         F1..F4 of a static shape (or: formants AA)
+mmtool fit                                       grid-search every vowel pose; prints the table
+mmtool syllable "B AA" -o ba.wav
+mmtool sing corpus/twinkle.txt -o song.wav       one "phones midi ms" per line; "-" melisma, "_" rest
+mmtool say "HH AH0 L OW1 / W ER1 L D" -o hello.wav
+mmtool speak "S T AA1 P / DH AE2 T" --midi 50 --range 5 -o stop.wav    spoken; also --speed S --breath B
+mmtool trace "AA S AA"                           10 ms frames: level, periodicity, centroid, body state
                                                  (--speak: the line through speak(), with its options)
-wptool throat [step]                             sweep the throat: the map of where the vowel gates hold
-wptool whistle --tongue .9 .6 --lips .3 -o w.wav a live whistle pose: lock, level, whistleHz against the lip modes
-wptool whistle 84 -o w.wav                       a note through whistle(): the same report
-wptool whistle fit                               grid-search the whistle table; prints the block (see Whistling)
+mmtool throat [step]                             sweep the throat: the map of where the vowel gates hold
+mmtool whistle --tongue .9 .6 --lips .3 -o w.wav a live whistle pose: lock, level, whistleHz against the lip modes
+mmtool whistle 84 -o w.wav                       a note through whistle(): the same report
+mmtool whistle fit                               grid-search the whistle table; prints the block (see Whistling)
    any render:  --png spec.png                   a spectrogram (0–8 kHz, ticks every 100 ms)
    options:     --size N --seed S --midi M --breath B --tense T --no-halfband --no-wobble
-                --tune NAME=VALUE                any field of wp::Tuning, repeatable (formants and fit take it too)
+                --tune NAME=VALUE                any field of mm::Tuning, repeatable (formants and fit take it too)
 ```
 
 `formants` feeds a unit impulse through a static tube and peak-picks the FFT:
 no source, no noise, no external tools. `fit` searches 7245 tubes in about a
 second, with the vowel orderings built into the search, and prints the block
-that is pasted into `src/core/wp_vocab.cpp`. Fitted residuals are all within
+that is pasted into `src/core/mm_vocab.cpp`. Fitted residuals are all within
 5 % of Peterson & Barney (adult male); the orderings hold at every voice size.
 
 `trace` and `--png` are the rig's eyes: what the body did and what came out,
@@ -265,20 +264,20 @@ targets (live setters | due score events)
 
 | | |
 |---|---|
-| `src/WindPipe.h` | umbrella |
-| `src/AudioSynthWindPipe.{h,cpp}` | the Teensy wrapper, the only platform file |
-| `src/core/wp_config.h` | constants, clamp, approach, xorshift32 — what is fixed |
-| `src/core/wp_tuning.{h,cpp}` | `wp::Tuning`: **every tunable** and its default; the few limits |
-| `src/core/wp_tube.{h,cpp}` | Kelly-Lochbaum tube + nose, halfband |
-| `src/core/wp_glottis.{h,cpp}` | LF pulse as recurrences, closed form as oracle |
-| `src/core/wp_noise.{h,cpp}` | aspiration + frication bands, modulator, turbulence window |
-| `src/core/wp_body.{h,cpp}` | anatomy; dynamics, releases, pressure; the airflow through the lips |
-| `src/core/wp_jet.{h,cpp}` | the jet at the lips: transit line, saturation, whistle telemetry |
-| `src/core/wp_pitch.{h,cpp}` | glide, vibrato, wobble |
-| `src/core/wp_vocab.{h,cpp}` | the 39 phonemes: vowel poses, consonant table; the whistle table |
-| `src/core/wp_score.{h,cpp}` | parser, compiler, player; timing constants |
-| `src/core/wp_voice.{h,cpp}` | the public surface |
-| `extras/host/` | Makefile, tests, `wptool`, WAV/PNG writers, `corpus/` |
+| `src/MonkMouth.h` | umbrella |
+| `src/AudioSynthMonkMouth.{h,cpp}` | the Teensy wrapper, the only platform file |
+| `src/core/mm_config.h` | constants, clamp, approach, xorshift32 — what is fixed |
+| `src/core/mm_tuning.{h,cpp}` | `mm::Tuning`: **every tunable** and its default; the few limits |
+| `src/core/mm_tube.{h,cpp}` | Kelly-Lochbaum tube + nose, halfband |
+| `src/core/mm_glottis.{h,cpp}` | LF pulse as recurrences, closed form as oracle |
+| `src/core/mm_noise.{h,cpp}` | aspiration + frication bands, modulator, turbulence window |
+| `src/core/mm_body.{h,cpp}` | anatomy; dynamics, releases, pressure; the airflow through the lips |
+| `src/core/mm_jet.{h,cpp}` | the jet at the lips: transit line, saturation, whistle telemetry |
+| `src/core/mm_pitch.{h,cpp}` | glide, vibrato, wobble |
+| `src/core/mm_vocab.{h,cpp}` | the 39 phonemes: vowel poses, consonant table; the whistle table |
+| `src/core/mm_score.{h,cpp}` | parser, compiler, player; timing constants |
+| `src/core/mm_voice.{h,cpp}` | the public surface |
+| `extras/host/` | Makefile, tests, `mmtool`, WAV/PNG writers, `corpus/` |
 | `extras/reference/pinktrombone.html` | the port bible, verbatim, with its license |
 
 `src/core/` includes nothing but the C++ standard library. One smoothing law
@@ -290,11 +289,11 @@ produce the same samples, bit for bit, at any render buffer size. No heap.
 ## Tuning
 
 **A tunable changes who is singing, not what is being sung.** Every number
-that passes that rule is a field of `wp::Tuning` (`src/core/wp_tuning.h`),
+that passes that rule is a field of `mm::Tuning` (`src/core/mm_tuning.h`),
 defaulted; a voice is handed one whole:
 
 ```cpp
-wp::Tuning t;                   // the defaults: the voice nobody tuned, bit for bit
+mm::Tuning t;                   // the defaults: the voice nobody tuned, bit for bit
 t.glottisRest   = 0.3f;         // a breathy singer
 t.lipReflection = -0.93f;       // ringing formants
 t.diction       = 1.5f;         // crisp consonants
@@ -342,12 +341,12 @@ under the note joins the voice, and at 1 the note itself drops an octave.
 `gain` is the pipe's output level, ahead of the output clamp, 1 as built; a
 new one ramps across the one block it lands on, so a held note never steps.
 The throat moves formants and the vowel table was fitted against one throat,
-so `wptool throat` is the guide: it maps which throats keep both vowel gates
+so `mmtool throat` is the guide: it maps which throats keep both vowel gates
 at every human size. It is a map, not a limit.
 
-What the rule leaves fixed stays in three places: `wp_config.h` (the engine's
-shape, the anatomy, the guards), `wp_vocab.cpp` (poses, consonants),
-`wp_score.h` (word timing). Re-run `wptool fit` after touching the anatomy or
+What the rule leaves fixed stays in three places: `mm_config.h` (the engine's
+shape, the anatomy, the guards), `mm_vocab.cpp` (poses, consonants),
+`mm_score.h` (word timing). Re-run `mmtool fit` after touching the anatomy or
 the tube. First levers, by symptom:
 
 - *lispy sibilants* — raise `fricationHz`; move S/SH places apart.
@@ -358,7 +357,7 @@ the tube. First levers, by symptom:
 - *a whistle buzzy or bright* — lower `jetGain`; *will not start* — raise it or
   `breathPressure`; *locks on the wrong mode, or only at some pitches* —
   `jetLength`; *too much hiss under the tone* — `turbulenceGain`. Re-run
-  `wptool whistle fit` after any of them.
+  `mmtool whistle fit` after any of them.
 
 ## Whistling
 
@@ -389,7 +388,7 @@ voice.noteOff();                            // ends it as it ends a note
 (the asked note, read back as `midi`), folds open, velum shut, tongue, pucker,
 slot 0 or none, slot 1 cleared, breath. The last writer still wins, per
 channel. `whistle()` ends any words in flight: a `sing()` not yet started is
-dropped, one playing is abandoned, and the phoneme readback clears. The table (`wp_vocab.cpp`) has one pose
+dropped, one playing is abandoned, and the phoneme readback clears. The table (`mm_vocab.cpp`) has one pose
 per semitone from midi 77 to 95 (F5 to B6, 698 to 1976 Hz), each within 21
 cents at N = 22 and breath 0.8; a fraction of a semitone interpolates the two
 neighbouring rows.
@@ -411,16 +410,16 @@ neighbouring rows.
   and a slot at the lips is a slit, which breaks the jet: `whistle()` ends any
   words in flight, and a `sing()` after it voices again.
 
-The table comes from `wptool whistle fit` (about 10 s on a laptop): a grid of
+The table comes from `mmtool whistle fit` (about 10 s on a laptop): a grid of
 57960 poses (tongue 23 × 21, pucker lipD 0.2 to 0.9 in 11 steps, no slot or
 one at 0.75 to 0.90 × three degrees), screened for a lip mode in the whistle
-band, rendered at breath 0.8 and measured the way `wptool whistle` measures:
+band, rendered at breath 0.8 and measured the way `mmtool whistle` measures:
 a lock is periodicity above 0.95 and `whistle` above 0.5 after 300 ms, and
 the pitch is the measured `whistleHz`, not the lip mode. Every lock is also
 rendered at breath 0.5 and 1.0 and at N = 16 and 26. A Viterbi pass picks one
 pose per semitone, trading cents, the lock's distance from its own lip mode, a
 lock lost at 0.5 or 1.0 and the error at the other sizes against pose jumps
-and slot flips between neighbours. It prints the block for `wp_vocab.cpp`,
+and slot flips between neighbours. It prints the block for `mm_vocab.cpp`,
 each row with its measured Hz, cents and drift. Re-run it after touching the
 anatomy, the tube, the jet or the whistle tunables.
 
@@ -450,7 +449,7 @@ Each of these is commented at the site.
    behind a T closure, and nasal releases had an "s" blip.
 7. **Noise gains 0.8 / 1.5, not the reference's 0.2 / 0.66.** Measured against
    an open vowel the reference puts /s/ 19 dB down and /h/ 30 dB down; speech
-   has them near 12 and 18. Set by `wptool trace`, not yet by ear. (They are
+   has them near 12 and 18. Set by `mmtool trace`, not yet by ear. (They are
    `Tuning`'s defaults.)
 8. **Three-port areas.** The reference reads the junction's left/right areas
    one section off (`A[noseStart]`, `A[noseStart+1]` for a junction between
@@ -462,8 +461,7 @@ Each of these is commented at the site.
 10. **"Last writer wins" is exact**, via a caller-side sequence number (it was
     the one place a race on the Teensy could change what you hear).
 
-The whistle departs from its own plan (`wind_pipe-whistle.md`) here, each
-measured:
+The whistle departs from its own plan here, each measured:
 
 11. **The jet is nudged by the lips' air velocity, not its displacement**
     (whistle plan §1, §3): the displacement's 1/f tilt locked every pose at

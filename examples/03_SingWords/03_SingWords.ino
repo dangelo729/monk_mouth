@@ -1,9 +1,9 @@
 // ----------------------------------------------------------------------------
-// wind_pipe example 03 — SingWords
+// monk_mouth example 03 — SingWords
 //
 // sing() a line: words on notes. (Teensy 4.1 + the SGTL5000 audio shield.)
 //
-// a wp::Syllable is { phones, midi, ms }:
+// a mm::Syllable is { phones, midi, ms }:
 //   phones  ARPABET, space-separated; stress digits are accepted and ignored.
 //           "_" is a rest, "" is a melisma (the vowel carries on, only the
 //           pitch changes).
@@ -22,9 +22,9 @@
 // ----------------------------------------------------------------------------
 
 #include <Audio.h>
-#include <WindPipe.h>
+#include <MonkMouth.h>
 
-AudioSynthWindPipe   voice;
+AudioSynthMonkMouth   voice;
 AudioMixer4          mixer;
 AudioOutputI2S       i2s;
 AudioConnection      patchCord1(voice, 0, mixer, 0);
@@ -38,27 +38,27 @@ const float nC3 = 48, nD3 = 50, nE3 = 52, nF3 = 53, nG3 = 55, nA3 = 57;
 const uint16_t Q = 450, H = 900;            // quarter and half, in ms
 
 // "twinkle, twinkle, little star"
-const wp::Syllable line1[] = {
+const mm::Syllable line1[] = {
     {"T W IH NG", nC3, Q}, {"K AH L", nC3, Q}, {"T W IH NG", nG3, Q}, {"K AH L", nG3, Q},
     {"L IH", nA3, Q}, {"T AH L", nA3, Q}, {"S T AA R", nG3, H}, {"_", 0, 250},
 };
 // "how I wonder what you are"
-const wp::Syllable line2[] = {
+const mm::Syllable line2[] = {
     {"HH AW", nF3, Q}, {"AY", nF3, Q}, {"W AH N", nE3, Q}, {"D ER", nE3, Q},
     {"W AH T", nD3, Q}, {"Y UW", nD3, Q}, {"AA R", nC3, H}, {"_", 0, 250},
 };
 // "up above the world so high"
-const wp::Syllable line3[] = {
+const mm::Syllable line3[] = {
     {"AH P", nG3, Q}, {"AH", nG3, Q}, {"B AH V", nF3, Q}, {"DH AH", nF3, Q},
     {"W ER L D", nE3, Q}, {"S OW", nE3, Q}, {"HH AY", nD3, H}, {"_", 0, 250},
 };
 // "like a diamond in the sky" — the last note is a melisma: one vowel, two pitches
-const wp::Syllable line4[] = {
+const mm::Syllable line4[] = {
     {"L AY K", nG3, Q}, {"AH", nG3, Q}, {"D AY", nF3, Q}, {"M AH N D", nF3, Q},
     {"IH N", nE3, Q}, {"DH AH", nE3, Q}, {"S K AY", nD3, Q}, {"", nC3, H}, {"_", 0, 600},
 };
 
-struct Line { const wp::Syllable* syls; int count; };
+struct Line { const mm::Syllable* syls; int count; };
 #define LINE(x) { x, (int)(sizeof(x) / sizeof(x[0])) }
 const Line kSong[] = { LINE(line1), LINE(line2), LINE(line3), LINE(line4), LINE(line1), LINE(line2) };
 const int  kLines = (int)(sizeof(kSong) / sizeof(kSong[0]));

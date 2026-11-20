@@ -1,13 +1,13 @@
-// wind_pipe — tests/test_score.cpp  (plan: Tests / Score)
+// monk_mouth — tests/test_score.cpp  (plan: Tests / Score)
 #include <cstring>
 #include <string>
 #include <vector>
 
-#include "core/wp_voice.h"
-#include "wp_analysis.h"
-#include "wp_test.h"
+#include "core/mm_voice.h"
+#include "mm_analysis.h"
+#include "mm_test.h"
 
-using namespace wp;
+using namespace mm;
 
 namespace {
 
@@ -77,7 +77,7 @@ uint32_t firstLetGo(const Compiled& c) {
 }  // namespace
 
 // for "B AA" at beat T the slot's clear event is at T: the onset releases on the beat.
-WP_TEST(score_onset_releases_on_the_beat) {
+MM_TEST(score_onset_releases_on_the_beat) {
     const Compiled c = sing({{"B AA", 48, 500}});
     CHECK(c.n > 0);
     const uint32_t T = c.info.beat[0];
@@ -107,7 +107,7 @@ WP_TEST(score_onset_releases_on_the_beat) {
 }
 
 // events come out time-sorted, and a score is self-contained: breath up at the start, down at the end.
-WP_TEST(score_is_sorted_and_bracketed_by_breath) {
+MM_TEST(score_is_sorted_and_bracketed_by_breath) {
     const Compiled c = sing({{"HH AH", 55, 300}, {"L OW", 57, 500}, {"_", 0, 200}, {"W ER L D", 60, 700}});
     CHECK(c.n > 0);
     for (int i = 1; i < c.n; ++i) CHECK(c.ev[i - 1].tick <= c.ev[i].tick);
@@ -122,7 +122,7 @@ WP_TEST(score_is_sorted_and_bracketed_by_breath) {
 }
 
 // codas end inside their syllable.
-WP_TEST(score_codas_end_inside_their_syllable) {
+MM_TEST(score_codas_end_inside_their_syllable) {
     const Compiled c = sing({{"K AE T S", 50, 450}, {"S IH T", 52, 450}, {"AA N D", 53, 500}});
     CHECK(c.n > 0);
     // walk the slot events: every clear issued for a coda lands before the next beat
@@ -145,7 +145,7 @@ WP_TEST(score_codas_end_inside_their_syllable) {
 }
 
 // a melisma emits pitch events only.
-WP_TEST(score_melisma_is_pitch_only) {
+MM_TEST(score_melisma_is_pitch_only) {
     const Compiled plain = sing({{"L AA", 60, 400}});
     const Compiled mel = sing({{"L AA", 60, 400}, {"", 62, 300}, {"", 64, 300}});
     CHECK(plain.n > 0 && mel.n == plain.n + 2);
@@ -162,7 +162,7 @@ WP_TEST(score_melisma_is_pitch_only) {
 }
 
 // holds compress toward a floor when the note is short; order survives.
-WP_TEST(score_short_notes_compress) {
+MM_TEST(score_short_notes_compress) {
     const Compiled slow = sing({{"AA S T", 50, 900}, {"S T R IY", 50, 900}});
     const Compiled fast = sing({{"AA S T", 50, 260}, {"S T R IY", 50, 260}});
     CHECK(slow.n > 0 && fast.n == slow.n);                           // same gestures, less time
@@ -183,7 +183,7 @@ WP_TEST(score_short_notes_compress) {
 }
 
 // event count stays bounded; an overflow is a clean false.
-WP_TEST(score_event_count_is_bounded) {
+MM_TEST(score_event_count_is_bounded) {
     const Compiled line = sing({{"T W IH NG", 60, 400}, {"K AH L", 60, 400}, {"T W IH NG", 67, 400}, {"K AH L", 67, 400},
                                 {"L IH", 69, 400}, {"T AH L", 69, 400}, {"S T AA R", 67, 800}});
     CHECK_MSG(line.n > 0 && line.n < 160, "a sung line is %d events", line.n);
@@ -198,7 +198,7 @@ WP_TEST(score_event_count_is_bounded) {
 }
 
 // bad phoneme and overflow return false and disturb nothing.
-WP_TEST(score_failures_disturb_nothing) {
+MM_TEST(score_failures_disturb_nothing) {
     const Syllable good[] = {{"M AA", 50, 400}, {"M IY", 52, 400}};
     const Syllable bad[] = {{"M AA", 50, 400}, {"M QQ", 52, 400}};
     std::vector<Syllable> huge(kMaxSyllables, Syllable{"S T R EH NG K TH S", 60, 900});
@@ -225,7 +225,7 @@ WP_TEST(score_failures_disturb_nothing) {
 }
 
 // say(): consonants between vowels join the next syllable, except at a "/" word end.
-WP_TEST(score_say_syllabifies) {
+MM_TEST(score_say_syllabifies) {
     Compiled joined, split;
     joined.n = compileSay("AH N AA", 50.0f, ScoreOptions(), joined.ev, kMaxEvents, &joined.info);
     split.n = compileSay("AH N / AA", 50.0f, ScoreOptions(), split.ev, kMaxEvents, &split.info);
@@ -241,7 +241,7 @@ WP_TEST(score_say_syllabifies) {
 }
 
 // syllable(): now, at the current note — it does not touch breath or pitch.
-WP_TEST(score_syllable_leaves_breath_and_pitch_alone) {
+MM_TEST(score_syllable_leaves_breath_and_pitch_alone) {
     Compiled c;
     ScoreOptions opt;
     opt.breathEvents = false;
@@ -259,7 +259,7 @@ WP_TEST(score_syllable_leaves_breath_and_pitch_alone) {
 }
 
 // the last writer wins, per channel, in the caller's own order — even inside one block.
-WP_TEST(score_last_writer_wins) {
+MM_TEST(score_last_writer_wins) {
     const Syllable line[] = {{"AA", 50, 600}};
     float buf[kBlock];
     {   // a setter called before sing() loses to the score's first events
@@ -297,7 +297,7 @@ WP_TEST(score_last_writer_wins) {
 }
 
 // stop(): the score ends, the mouth lets go, the voice falls silent.
-WP_TEST(score_stop) {
+MM_TEST(score_stop) {
     Voice v;
     const Syllable line[] = {{"M AA", 50, 2000}, {"N IY", 52, 2000}};
     CHECK(v.sing(line, 2));
@@ -312,7 +312,7 @@ WP_TEST(score_stop) {
 }
 
 // the readback names the phoneme being sung.
-WP_TEST(score_phoneme_readback) {
+MM_TEST(score_phoneme_readback) {
     Voice v;
     const Syllable line[] = {{"S AA", 50, 600}};
     Compiled c = sing({{"S AA", 50, 600}});
@@ -329,7 +329,7 @@ WP_TEST(score_phoneme_readback) {
 // first voiceless consonant releases, nothing out of a closure before it
 // releases, the breath only once the first consonant is in place, and a word
 // that opens on a vowel opens on its pose. live play keeps its own timing.
-WP_TEST(score_starts_clean) {
+MM_TEST(score_starts_clean) {
     const char* voiceless[] = {"S AA1", "SH AA1", "F AA1", "TH AA1", "HH AA1", "P AA1", "T AA1", "K AA1",
                                "CH AA1", "K W IH1 T / IH1 T", "S T AA1 P / DH AE2 T"};
     for (const char* w : voiceless) {
@@ -391,7 +391,7 @@ WP_TEST(score_starts_clean) {
 // into silence the glottis stays open until the breath has gone: no voice
 // comes back after a word's last voiceless consonant, at the end or before a
 // rest. followed by a vowel, a stop still voices again kVotMs after it lets go.
-WP_TEST(score_ends_clean) {
+MM_TEST(score_ends_clean) {
     const char* words[] = {"K W IH1 T / IH1 T", "AW1 CH", "S T AA1 P", "B AE1 K", "M IH1 S", "F IH1 SH", "B AE1 TH",
                            "K AE1 T S", "HH AH1 F", "AA1 T _ M AA1", "AA1 S _ AA1"};
     for (const char* w : words) {
@@ -459,7 +459,7 @@ std::vector<Frame> speakFrames(Voice& v, const char* phones, const Speech& sp, i
 
 // a vowel's length is its stress: primary, then secondary, then unstressed;
 // a diphthong is longer, the line's last syllable longer still; the speed divides it all.
-WP_TEST(speak_durations_follow_stress) {
+MM_TEST(speak_durations_follow_stress) {
     const Compiled c = speakEvents("D AA1 D AA2 D AA0 D AA1");
     CHECK(c.n > 0 && c.info.syllables == 4);
     const float p = vowelMs(c, 0), s = vowelMs(c, 1), u = vowelMs(c, 2), last = vowelMs(c, 3);
@@ -481,7 +481,7 @@ WP_TEST(speak_durations_follow_stress) {
 
 // the pitch keeps moving: an unaccented syllable on the baseline, the accent
 // lifted by the range in its own vowel, the end below the baseline. glides, not steps.
-WP_TEST(speak_pitch_peaks_on_the_accent_and_ends_low) {
+MM_TEST(speak_pitch_peaks_on_the_accent_and_ends_low) {
     Speech sp;
     sp.midi = 50.0f;
     sp.range = 4.0f;
@@ -520,7 +520,7 @@ WP_TEST(speak_pitch_peaks_on_the_accent_and_ends_low) {
 
 // no vibrato while speaking, from the first voiced block; afterwards the voice
 // sings with the vibrato and glide it was given, as if it had never spoken.
-WP_TEST(speak_has_no_vibrato_and_leaves_the_voice_as_set) {
+MM_TEST(speak_has_no_vibrato_and_leaves_the_voice_as_set) {
     Voice v;
     float buf[kBlock];
     v.setVibrato(5.0f, 40.0f, 0.1f);                                 // quick and deep: it would show in a spoken line
@@ -556,7 +556,7 @@ WP_TEST(speak_has_no_vibrato_and_leaves_the_voice_as_set) {
 
 // out of silence and into it, the same as say(): no voice before the first
 // voiceless consonant releases, none after the last one.
-WP_TEST(speak_starts_and_ends_clean) {
+MM_TEST(speak_starts_and_ends_clean) {
     Speech sp;
     sp.midi = 50.0f;
     sp.range = 5.0f;
@@ -579,7 +579,7 @@ WP_TEST(speak_starts_and_ends_clean) {
 }
 
 // loudness follows stress; Speech.breath sets the stressed level and the voice's own level stays.
-WP_TEST(speak_loudness_follows_stress) {
+MM_TEST(speak_loudness_follows_stress) {
     const char* line = "K W IH1 T / IH0 T";
     const Compiled c = speakEvents(line);
     auto breathAt = [&](Voice& v, const Speech& sp, uint32_t tick) {
@@ -606,7 +606,7 @@ WP_TEST(speak_loudness_follows_stress) {
 }
 
 // a bad phoneme or an overflow is a clean false that disturbs nothing; busy() and stop() work on it as on any score.
-WP_TEST(speak_failures_disturb_nothing) {
+MM_TEST(speak_failures_disturb_nothing) {
     std::string huge;
     for (int i = 0; i < 40; ++i) huge += "S T R EH1 NG K TH S / ";
     Voice a, b;

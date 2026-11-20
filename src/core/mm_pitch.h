@@ -1,12 +1,12 @@
-// wind_pipe — wp_pitch.h  (plan §6)
+// monk_mouth — mm_pitch.h  (plan §6)
 // the pitch axis: a target note eased in log frequency, plus vibrato and
 // wobble in cents. one f0 per block; the glottis latches it per period.
 #pragma once
 
-#include "wp_config.h"
-#include "wp_tuning.h"
+#include "mm_config.h"
+#include "mm_tuning.h"
 
-namespace wp {
+namespace mm {
 
 class PitchAxis {
 public:
@@ -47,4 +47,4 @@ private:
     float slowCents_ = 0.0f, fastCents_ = 0.0f;           // each drift's depth at wobble = 1
 };
 
-}  // namespace wp
+}  // namespace mm

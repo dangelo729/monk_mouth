@@ -1,7 +1,7 @@
-// wind_pipe — wp_pitch.cpp  (plan §6)
-#include "wp_pitch.h"
+// monk_mouth — mm_pitch.cpp  (plan §6)
+#include "mm_pitch.h"
 
-namespace wp {
+namespace mm {
 
 void PitchAxis::init(float fs, float midi, const Tuning& t) {
     dt_ = (float)kBlock / fs;
@@ -59,4 +59,4 @@ float PitchAxis::tick(Rng& rng, bool silent) {
     return f0_;
 }
 
-}  // namespace wp
+}  // namespace mm

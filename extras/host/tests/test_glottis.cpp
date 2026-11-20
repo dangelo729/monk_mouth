@@ -1,15 +1,15 @@
-// wind_pipe — tests/test_glottis.cpp  (plan: Tests / Glottis)
+// monk_mouth — tests/test_glottis.cpp  (plan: Tests / Glottis)
 #include <cmath>
 #include <vector>
 
-#include "core/wp_glottis.h"
-#include "wp_analysis.h"
-#include "wp_test.h"
+#include "core/mm_glottis.h"
+#include "mm_analysis.h"
+#include "mm_test.h"
 
-using namespace wp;
+using namespace mm;
 
 // recurrence vs closed form within 1e-4 across tenseness 0..1 x f0 60..1000 Hz, all finite.
-WP_TEST(glottis_recurrence_matches_closed_form) {
+MM_TEST(glottis_recurrence_matches_closed_form) {
     const float f0s[] = {60.0f, 82.4f, 110.0f, 146.8f, 220.0f, 329.6f, 440.0f, 659.3f, 880.0f, 1000.0f};
     double worst = 0.0;
     for (float f0 : f0s) {
@@ -36,7 +36,7 @@ WP_TEST(glottis_recurrence_matches_closed_form) {
 
 // measured f0 within 0.1 %, from the waveform alone: the pulse crosses from
 // + to - exactly once per period (at Tp).
-WP_TEST(glottis_pitch_is_exact) {
+MM_TEST(glottis_pitch_is_exact) {
     const float f0s[] = {60.0f, 97.3f, 130.81f, 261.63f, 523.25f, 987.77f};
     for (float f0 : f0s) {
         Glottis g;
@@ -61,7 +61,7 @@ WP_TEST(glottis_pitch_is_exact) {
 }
 
 // each period integrates to ~0: the pulse is a flow derivative, it carries no DC.
-WP_TEST(glottis_period_integrates_to_zero) {
+MM_TEST(glottis_period_integrates_to_zero) {
     for (int ti = 0; ti <= 10; ++ti) {
         const float tense = (float)ti / 10.0f;
         Glottis g;
@@ -76,7 +76,7 @@ WP_TEST(glottis_period_integrates_to_zero) {
 // growl: every other period is the plain pulse times 1 - growl, sample for
 // sample, starting with the second — and each weak period still integrates
 // to zero.
-WP_TEST(glottis_growl_weakens_every_other_period) {
+MM_TEST(glottis_growl_weakens_every_other_period) {
     for (float growl : {0.0f, 0.3f, 1.0f, -0.5f}) {
         Glottis g, plain;
         g.setTargets(100.0f, 0.6f);                           // 441 samples per period exactly
@@ -101,7 +101,7 @@ WP_TEST(glottis_growl_weakens_every_other_period) {
 }
 
 // spectral tilt is monotonic in tenseness: a tenser fold is a brighter pulse.
-WP_TEST(glottis_tilt_monotonic_in_tenseness) {
+MM_TEST(glottis_tilt_monotonic_in_tenseness) {
     double prev = -1e9;
     for (int ti = 2; ti <= 16; ++ti) {                        // Rd is clamped outside 0.1 .. 0.83
         const float tense = (float)ti / 20.0f;
@@ -123,7 +123,7 @@ WP_TEST(glottis_tilt_monotonic_in_tenseness) {
 }
 
 // f0 and tenseness latch once per period, and a pitch sweep stays finite and bounded.
-WP_TEST(glottis_sweep_is_bounded) {
+MM_TEST(glottis_sweep_is_bounded) {
     Glottis g;
     g.init(kDefaultFs);
     float peak = 0.0f;

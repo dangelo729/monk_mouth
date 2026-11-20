@@ -1,10 +1,10 @@
-// wind_pipe — wp_wav.cpp
-#include "wp_wav.h"
+// monk_mouth — mm_wav.cpp
+#include "mm_wav.h"
 
 #include <cstdint>
 #include <cstdio>
 
-namespace wp {
+namespace mm {
 
 static void put32(FILE* f, uint32_t v) { for (int i = 0; i < 4; ++i) fputc((int)((v >> (8 * i)) & 0xFF), f); }
 static void put16(FILE* f, uint16_t v) { for (int i = 0; i < 2; ++i) fputc((int)((v >> (8 * i)) & 0xFF), f); }
@@ -30,4 +30,4 @@ bool writeWav(const char* path, const float* samples, int count, int sampleRate)
     return ok;
 }
 
-}  // namespace wp
+}  // namespace mm

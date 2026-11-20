@@ -1,5 +1,5 @@
 // ----------------------------------------------------------------------------
-// wind_pipe example 99 — Benchmark
+// monk_mouth example 99 — Benchmark
 //
 // the hardware go / no-go (plan: stage 2, and the acceptance gate):
 //
@@ -19,7 +19,7 @@
 //   FOUR   60 s   all four in the worst case          <- the gate: max <= 25 %
 //   RING   15 s   every note off. the tubes ring down into the silence gate.
 //                 CPU must FALL here. if it RISES, denormals are getting
-//                 through (FPDSCR flush-to-zero, AudioSynthWindPipe.cpp).
+//                 through (FPDSCR flush-to-zero, AudioSynthMonkMouth.cpp).
 //
 // columns: phase, second, total % now, total % max this second, max this
 // phase, each voice's max this second, audio memory max.
@@ -33,13 +33,13 @@
 // ----------------------------------------------------------------------------
 
 #include <Audio.h>
-#include <WindPipe.h>
+#include <MonkMouth.h>
 
 // four sizes of singer, four seeds: no two voices share a sample
-AudioSynthWindPipe   voice0(22, 1);
-AudioSynthWindPipe   voice1(22, 2);
-AudioSynthWindPipe   voice2(19, 3);
-AudioSynthWindPipe   voice3(26, 4);         // the longest tube is the dearest
+AudioSynthMonkMouth   voice0(22, 1);
+AudioSynthMonkMouth   voice1(22, 2);
+AudioSynthMonkMouth   voice2(19, 3);
+AudioSynthMonkMouth   voice3(26, 4);         // the longest tube is the dearest
 AudioMixer4          mixer;
 AudioOutputI2S       i2s;
 AudioConnection      patchCord1(voice0, 0, mixer, 0);
@@ -50,7 +50,7 @@ AudioConnection      patchCord5(mixer, 0, i2s, 0);
 AudioConnection      patchCord6(mixer, 0, i2s, 1);
 AudioControlSGTL5000 sgtl5000;
 
-AudioSynthWindPipe* const kVoices[4] = { &voice0, &voice1, &voice2, &voice3 };
+AudioSynthMonkMouth* const kVoices[4] = { &voice0, &voice1, &voice2, &voice3 };
 const float kNotes[4] = { 45.0f, 52.0f, 57.0f, 40.0f };
 
 enum Phase { ONE, FOUR, RING };
@@ -63,7 +63,7 @@ float    phaseMax = 0.0f;
 bool     halfband = true;
 
 // all voiced, velum open, a fricative held
-void worstCase(AudioSynthWindPipe& v, float midi) {
+void worstCase(AudioSynthMonkMouth& v, float midi) {
     v.setVibrato(6.0f, 40.0f, 0.0f);
     v.setWobble(1.0f);
     v.setTenseness(0.7f);
@@ -105,7 +105,7 @@ void setup() {
     for (int i = 0; i < 4; ++i) mixer.gain(i, 0.25f);
 
     while (!Serial && millis() < 3000) {}
-    Serial.println(F("wind_pipe benchmark — gate: FOUR max <= 25 %, RING falls"));
+    Serial.println(F("monk_mouth benchmark — gate: FOUR max <= 25 %, RING falls"));
     Serial.print(F("F_CPU_ACTUAL ")); Serial.println(F_CPU_ACTUAL);
     enter(ONE);
     lastPrintMs = millis();

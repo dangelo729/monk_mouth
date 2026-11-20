@@ -1,4 +1,4 @@
-// wind_pipe — tests/test_tuning.cpp
+// monk_mouth — tests/test_tuning.cpp
 // the tunables: a default tuning is no tuning at all, every field is wired to
 // something, nothing is limited but what would end the voice, and the
 // behaviours the tuning adds — a resting glottis, a resting velum, the lips
@@ -7,11 +7,11 @@
 #include <cstring>
 #include <vector>
 
-#include "core/wp_voice.h"
-#include "wp_analysis.h"
-#include "wp_test.h"
+#include "core/mm_voice.h"
+#include "mm_analysis.h"
+#include "mm_test.h"
 
-using namespace wp;
+using namespace mm;
 
 namespace {
 
@@ -98,7 +98,7 @@ struct Rig {
 }  // namespace
 
 // a voice handed the defaults is the voice nobody tuned: the same samples.
-WP_TEST(tuning_default_is_no_tuning) {
+MM_TEST(tuning_default_is_no_tuning) {
     for (int n : {22, 16, 26}) {
         Voice plain(n, 5), tuned(n, 5);
         tuned.setTuning(Tuning());
@@ -108,7 +108,7 @@ WP_TEST(tuning_default_is_no_tuning) {
 
 // the same tuning set again in the middle of a note changes no sample: a
 // retune moves numbers, it resets nothing.
-WP_TEST(tuning_retune_resets_nothing) {
+MM_TEST(tuning_retune_resets_nothing) {
     Tuning t;
     t.glottisRest = 0.2f; t.lipReflection = -0.9f; t.rateTongue = 20.0f; t.diction = 1.4f; t.wobbleFastHz = 9.0f;
     Voice a(22, 9), b(22, 9);
@@ -129,7 +129,7 @@ WP_TEST(tuning_retune_resets_nothing) {
 
 // every field, moved, changes what comes out: no tunable is wired to nothing.
 // the jet's fields are asked of a whistle, the rest of a sung line.
-WP_TEST(tuning_every_field_is_heard) {
+MM_TEST(tuning_every_field_is_heard) {
     Voice ref(22, 5), refWhistle(22, 5);
     const std::vector<float> base = singLine(ref), baseWhistle = whistle(refWhistle);
     const Tuning d;
@@ -173,7 +173,7 @@ Tuning limitedAt(float v) {
 // a field with no limit is handed through as given, however far out; one with
 // a limit stops exactly there; NaN falls back to the default; and what a voice
 // reports is what it was held to.
-WP_TEST(tuning_limits_only_what_ends_the_voice) {
+MM_TEST(tuning_limits_only_what_ends_the_voice) {
     const Tuning lo = clamped(filled(-kOpen), kDefaultFs), hi = clamped(filled(kOpen), kDefaultFs);
     const Tuning d;
     int limited = 0;
@@ -200,7 +200,7 @@ WP_TEST(tuning_limits_only_what_ends_the_voice) {
 // the most resonant pipe the limits allow (both ends and the walls lossless):
 // loud, but finite, inside [-1, 1], the tube's energy under a fixed bound —
 // and the same voice sings again once it is handed the defaults.
-WP_TEST(tuning_survives_its_limits) {
+MM_TEST(tuning_survives_its_limits) {
     Tuning ringing;
     ringing.glottalReflection = kOpen; ringing.lipReflection = -kOpen; ringing.damp = kOpen;
     Tuning cases[] = {limitedAt(-kOpen), limitedAt(kOpen), ringing};
@@ -288,7 +288,7 @@ WP_TEST(tuning_survives_its_limits) {
 // the live setters take what they are given: a breath past 1 is only louder,
 // a tenseness past 1 still sings (below zero it would have no voicing gain, so
 // that one floor stands), and wobble and vibrato run at any value.
-WP_TEST(tuning_setters_are_not_capped) {
+MM_TEST(tuning_setters_are_not_capped) {
     auto level = [](float vel) {
         Voice v(22, 7);
         v.setWobble(0.0f);
@@ -329,7 +329,7 @@ WP_TEST(tuning_setters_are_not_capped) {
 
 // a drift too slow for a float coefficient is a drift that never moves — not a
 // division by zero. any speed is a legal speed.
-WP_TEST(tuning_wobble_speed_has_no_dead_zone) {
+MM_TEST(tuning_wobble_speed_has_no_dead_zone) {
     for (float hz : {1e-30f, 1e-6f, 1e-5f, 0.0f, -2.0f, 1e6f}) {
         Tuning t;
         t.wobbleSlowHz = hz; t.wobbleFastHz = hz;
@@ -344,7 +344,7 @@ WP_TEST(tuning_wobble_speed_has_no_dead_zone) {
 
 // a channel easing at its own rate takes a new one at once; one a score has
 // given a rate keeps it until it is aimed again.
-WP_TEST(tuning_rates_land_on_channels_at_their_own_rate) {
+MM_TEST(tuning_rates_land_on_channels_at_their_own_rate) {
     Tuning fast;
     fast.rateTongue = 140.0f;
     const float target = 0.6f;
@@ -371,7 +371,7 @@ WP_TEST(tuning_rates_land_on_channels_at_their_own_rate) {
 // glottisRest: "voiced" means this voice's rest. a held vowel is noisier, the
 // folds come back to the rest after a voiceless consonant — not to shut — and
 // a retune re-aims a glottis that is already there.
-WP_TEST(tuning_glottis_rests_open) {
+MM_TEST(tuning_glottis_rests_open) {
     auto held = [](float rest, double& per, float& glottis) {
         Tuning t;
         t.glottisRest = rest;
@@ -418,7 +418,7 @@ WP_TEST(tuning_glottis_rests_open) {
 // purse toward UW's; spread, a rounded vowel's open toward the widest; and
 // that is all it touches: a labial still closes, a whistle's lips are the
 // table's, and a retune re-holds the vowel being sung.
-WP_TEST(tuning_lip_round_holds_the_vowels_lips) {
+MM_TEST(tuning_lip_round_holds_the_vowels_lips) {
     auto vowelAt = [](float round, const char* phones) {
         Tuning t;
         t.lipRound = round;
@@ -494,7 +494,7 @@ WP_TEST(tuning_lip_round_holds_the_vowels_lips) {
 // velumRest: the nose stays coupled through a score's commit and through a
 // nasal's close. half open, a stop still bursts; wide open it no longer does —
 // the body's own rule for a nasal voice, not a limit on the tuning.
-WP_TEST(tuning_velum_rests_open) {
+MM_TEST(tuning_velum_rests_open) {
     Tuning t;
     t.velumRest = 0.3f;
     Voice v(22, 2);
@@ -528,7 +528,7 @@ WP_TEST(tuning_velum_rests_open) {
 
 // diction 2: the closure is asked for at twice the rate and leads by half the
 // time, its hold and the event count are what they were.
-WP_TEST(tuning_diction_scales_the_gesture_not_the_score) {
+MM_TEST(tuning_diction_scales_the_gesture_not_the_score) {
     const Syllable syl[] = {{"AA", 45.0f, 400}, {"B AA", 45.0f, 500}, {"S T AA N", 47.0f, 600}};
     auto closure = [&](float diction, int& count, float& rate, float& release, int& lead) {
         Event events[kMaxEvents];
@@ -567,7 +567,7 @@ WP_TEST(tuning_diction_scales_the_gesture_not_the_score) {
 // set one on, sample for sample. a new one ramps straight across the block it
 // lands on, so a held note never steps, and from the next block on 0.5 is
 // exactly half. however loud, the clamp still holds the output to [-1, 1].
-WP_TEST(tuning_gain_scales_the_output_ahead_of_the_clamp) {
+MM_TEST(tuning_gain_scales_the_output_ahead_of_the_clamp) {
     {   Tuning t;
         t.gain = 1.0f;
         Voice plain(22, 5), one(22, 5);

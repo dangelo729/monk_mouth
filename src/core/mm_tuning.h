@@ -1,4 +1,4 @@
-// wind_pipe — wp_tuning.h
+// monk_mouth — mm_tuning.h
 // the tunables. a tunable changes who is singing, not what is being sung.
 //
 // every field here passes three tests. the outside world gives it no right
@@ -6,7 +6,7 @@
 // else depends on it being what it is: not the fitted vowel table, a test
 // gate, or an array size. and two different values would both be a good
 // voice, just different voices. what fails them stays a constant, in
-// wp_config.h, wp_vocab.cpp and wp_score.h.
+// mm_config.h, mm_vocab.cpp and mm_score.h.
 //
 // a voice is handed one of these whole (Voice::setTuning) and it lands at the
 // top of the next block, like every other target. the field initializers are
@@ -19,7 +19,7 @@
 // end it too, back into the field's default.
 #pragma once
 
-namespace wp {
+namespace mm {
 
 struct Tuning {
     // ---- larynx ---------------------------------------------------------------------
@@ -27,7 +27,7 @@ struct Tuning {
     float growl             = 0.0f;     // every other pulse this much weaker: an octave under the note, heard as growl
     // the reference's noise gains are 0.2 and 0.66. measured against an open
     // vowel they put /s/ 19 dB down and /h/ 30 dB down; speech has them near 12
-    // and 18. these defaults were set by that measurement (wptool trace).
+    // and 18. these defaults were set by that measurement (mmtool trace).
     float aspirationGain    = 0.8f;     // the air in the voice, and how loud /h/ is
     float aspirationHz      = 500.0f;   // the breath's colour: low is chesty, high is airy
     float aspirationQ       = 0.5f;     // how narrow that colour is
@@ -80,4 +80,4 @@ struct Tuning {
 // field's default. fs bounds the two noise bands at half the sample rate.
 Tuning clamped(const Tuning& t, float fs);
 
-}  // namespace wp
+}  // namespace mm

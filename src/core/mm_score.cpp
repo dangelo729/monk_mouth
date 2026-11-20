@@ -1,9 +1,9 @@
-// wind_pipe — wp_score.cpp  (plan §9)
-#include "wp_score.h"
+// monk_mouth — mm_score.cpp  (plan §9)
+#include "mm_score.h"
 
 #include <cstring>
 
-namespace wp {
+namespace mm {
 namespace {
 
 enum : uint8_t { kSyl, kRest, kMelisma };
@@ -176,7 +176,7 @@ struct Emitter {
                    float restoreX, float restoreD, float restoreLip, bool restoreVowel,
                    int32_t openAt = -1, int32_t shutAt = -1) {
         const float restoreTag = restoreVowel ? kLipsVowel : 0.0f;
-        const Consonant& c = wp::consonant(phone);
+        const Consonant& c = mm::consonant(phone);
         const int32_t set = t.set > floorTick ? t.set : floorTick;
         const int32_t mid = t.mid > set ? t.mid : set;
         const int32_t rel = t.rel > mid ? t.rel : mid;
@@ -616,4 +616,4 @@ void ScorePlayer::endBlock() {
 
 void ScorePlayer::abandon() { cursor_ = count_[active_]; }
 
-}  // namespace wp
+}  // namespace mm

@@ -1,7 +1,7 @@
-// wind_pipe — AudioSynthWindPipe.cpp  (plan §10)
+// monk_mouth — AudioSynthMonkMouth.cpp  (plan §10)
 // the header self-guards on #if defined(ARDUINO), so on the host this
 // translation unit is intentionally empty.
-#include "AudioSynthWindPipe.h"
+#include "AudioSynthMonkMouth.h"
 
 #if defined(ARDUINO)
 
@@ -33,8 +33,8 @@ private:
 }  // namespace
 
 // loop bounds below use AUDIO_BLOCK_SAMPLES. the core's control block is
-// wp::kBlock = 128, the stock value — but nothing breaks if a build changes
-// AUDIO_BLOCK_SAMPLES: wp::Voice::render runs control once per 128 samples
+// mm::kBlock = 128, the stock value — but nothing breaks if a build changes
+// AUDIO_BLOCK_SAMPLES: mm::Voice::render runs control once per 128 samples
 // internally whatever size it is called with, and latch() merges into the
 // audio side's table, so one latch per update() is right at any block size.
 static_assert(AUDIO_BLOCK_SAMPLES > 0, "AUDIO_BLOCK_SAMPLES must be positive");
@@ -43,7 +43,7 @@ static_assert(AUDIO_BLOCK_SAMPLES > 0, "AUDIO_BLOCK_SAMPLES must be positive");
 // it in the thread's FPSCR alone would NOT cover update(): on ARMv7-M a new
 // floating-point context in an exception is loaded from FPDSCR. verify on
 // hardware (plan: stage 2) — CPU must not rise as a note rings out.
-FLASHMEM void AudioSynthWindPipe::initFlushToZero() {
+FLASHMEM void AudioSynthMonkMouth::initFlushToZero() {
     static bool done = false;
     if (done) return;
     done = true;
@@ -51,7 +51,7 @@ FLASHMEM void AudioSynthWindPipe::initFlushToZero() {
     __builtin_arm_set_fpscr(__builtin_arm_get_fpscr() | kFlushToZero); // and the current one (setup / loop)
 }
 
-AudioSynthWindPipe::AudioSynthWindPipe(float sections, uint32_t seed)
+AudioSynthMonkMouth::AudioSynthMonkMouth(float sections, uint32_t seed)
     : AudioStream(0, NULL), voice_(sections, seed, AUDIO_SAMPLE_RATE_EXACT) {
     initFlushToZero();
     voice_.setAutoLatch(false);                   // update() owns the latch, inside its mask
@@ -60,29 +60,29 @@ AudioSynthWindPipe::AudioSynthWindPipe(float sections, uint32_t seed)
 
 // ---- setters: every call sets a target, atomically with respect to update() -----------------------
 
-void AudioSynthWindPipe::setBreath(float p01)        { IrqMask m; voice_.setBreath(p01); }
-void AudioSynthWindPipe::setPitch(float midi)        { IrqMask m; voice_.setPitch(midi); }
-void AudioSynthWindPipe::setGlottis(float open01)    { IrqMask m; voice_.setGlottis(open01); }
-void AudioSynthWindPipe::setTenseness(float t01)     { IrqMask m; voice_.setTenseness(t01); }
-void AudioSynthWindPipe::setTongue(float pos01, float height01) { IrqMask m; voice_.setTongue(pos01, height01); }
-void AudioSynthWindPipe::setLips(float aperture01)   { IrqMask m; voice_.setLips(aperture01); }
-void AudioSynthWindPipe::setVelum(float open01)      { IrqMask m; voice_.setVelum(open01); }
-void AudioSynthWindPipe::setConstriction(int slot, float place01, float degree) {
+void AudioSynthMonkMouth::setBreath(float p01)        { IrqMask m; voice_.setBreath(p01); }
+void AudioSynthMonkMouth::setPitch(float midi)        { IrqMask m; voice_.setPitch(midi); }
+void AudioSynthMonkMouth::setGlottis(float open01)    { IrqMask m; voice_.setGlottis(open01); }
+void AudioSynthMonkMouth::setTenseness(float t01)     { IrqMask m; voice_.setTenseness(t01); }
+void AudioSynthMonkMouth::setTongue(float pos01, float height01) { IrqMask m; voice_.setTongue(pos01, height01); }
+void AudioSynthMonkMouth::setLips(float aperture01)   { IrqMask m; voice_.setLips(aperture01); }
+void AudioSynthMonkMouth::setVelum(float open01)      { IrqMask m; voice_.setVelum(open01); }
+void AudioSynthMonkMouth::setConstriction(int slot, float place01, float degree) {
     IrqMask m; voice_.setConstriction(slot, place01, degree);
 }
-void AudioSynthWindPipe::clearConstriction(int slot) { IrqMask m; voice_.clearConstriction(slot); }
-void AudioSynthWindPipe::setGlide(float perSec)      { IrqMask m; voice_.setGlide(perSec); }
-void AudioSynthWindPipe::setVibrato(float rateHz, float cents, float onsetSec) {
+void AudioSynthMonkMouth::clearConstriction(int slot) { IrqMask m; voice_.clearConstriction(slot); }
+void AudioSynthMonkMouth::setGlide(float perSec)      { IrqMask m; voice_.setGlide(perSec); }
+void AudioSynthMonkMouth::setVibrato(float rateHz, float cents, float onsetSec) {
     IrqMask m; voice_.setVibrato(rateHz, cents, onsetSec);
 }
-void AudioSynthWindPipe::setWobble(float amount01)   { IrqMask m; voice_.setWobble(amount01); }
-void AudioSynthWindPipe::setTuning(const wp::Tuning& t) { IrqMask m; voice_.setTuning(t); }
-wp::Tuning AudioSynthWindPipe::tuning() const        { return voice_.tuning(); }   // caller side only: no mask
-void AudioSynthWindPipe::setSections(float sections) { IrqMask m; voice_.setSections(sections); }
-void AudioSynthWindPipe::noteOn(float midi, float vel01) { IrqMask m; voice_.noteOn(midi, vel01); }
-void AudioSynthWindPipe::noteOff()                   { IrqMask m; voice_.noteOff(); }
-void AudioSynthWindPipe::whistle(float midi, float breath) { IrqMask m; voice_.whistle(midi, breath); }
-void AudioSynthWindPipe::setHalfband(bool on)        { voice_.setHalfband(on); }   // one byte: atomic as it is
+void AudioSynthMonkMouth::setWobble(float amount01)   { IrqMask m; voice_.setWobble(amount01); }
+void AudioSynthMonkMouth::setTuning(const mm::Tuning& t) { IrqMask m; voice_.setTuning(t); }
+mm::Tuning AudioSynthMonkMouth::tuning() const        { return voice_.tuning(); }   // caller side only: no mask
+void AudioSynthMonkMouth::setSections(float sections) { IrqMask m; voice_.setSections(sections); }
+void AudioSynthMonkMouth::noteOn(float midi, float vel01) { IrqMask m; voice_.noteOn(midi, vel01); }
+void AudioSynthMonkMouth::noteOff()                   { IrqMask m; voice_.noteOff(); }
+void AudioSynthMonkMouth::whistle(float midi, float breath) { IrqMask m; voice_.whistle(midi, breath); }
+void AudioSynthMonkMouth::setHalfband(bool on)        { voice_.setHalfband(on); }   // one byte: atomic as it is
 
 // ---- words: compiled here, caller-side and unmasked; committed by flag -------------------------------
 // ScorePlayer::commit withdraws its pending flag, copies into the buffer the
@@ -91,30 +91,30 @@ void AudioSynthWindPipe::setHalfband(bool on)        { voice_.setHalfband(on); }
 // sees either no commit or a complete one — so no mask, and the long part
 // (the compile) never delays an audio block.
 
-bool AudioSynthWindPipe::syllable(const char* phones)            { return voice_.syllable(phones); }
-bool AudioSynthWindPipe::sing(const wp::Syllable* syls, int n)   { return voice_.sing(syls, n); }
-bool AudioSynthWindPipe::sing(const wp::Syllable* syls, int n, float breath) { return voice_.sing(syls, n, breath); }
-bool AudioSynthWindPipe::say(const char* phones)                 { return voice_.say(phones); }
-bool AudioSynthWindPipe::speak(const char* phones)               { return voice_.speak(phones); }
-bool AudioSynthWindPipe::speak(const char* phones, const wp::Speech& s) { return voice_.speak(phones, s); }
-void AudioSynthWindPipe::stop()                                  { IrqMask m; voice_.stop(); }
-bool AudioSynthWindPipe::busy() const                            { return voice_.busy(); }
+bool AudioSynthMonkMouth::syllable(const char* phones)            { return voice_.syllable(phones); }
+bool AudioSynthMonkMouth::sing(const mm::Syllable* syls, int n)   { return voice_.sing(syls, n); }
+bool AudioSynthMonkMouth::sing(const mm::Syllable* syls, int n, float breath) { return voice_.sing(syls, n, breath); }
+bool AudioSynthMonkMouth::say(const char* phones)                 { return voice_.say(phones); }
+bool AudioSynthMonkMouth::speak(const char* phones)               { return voice_.speak(phones); }
+bool AudioSynthMonkMouth::speak(const char* phones, const mm::Speech& s) { return voice_.speak(phones, s); }
+void AudioSynthMonkMouth::stop()                                  { IrqMask m; voice_.stop(); }
+bool AudioSynthMonkMouth::busy() const                            { return voice_.busy(); }
 
 // ---- readback: the same copy, the other way --------------------------------------------------------------
 
-wp::BodyState AudioSynthWindPipe::state() const {
+mm::BodyState AudioSynthMonkMouth::state() const {
     IrqMask m;
     return voice_.state();
 }
 
-int AudioSynthWindPipe::diameters(float* out, int max) const {
+int AudioSynthMonkMouth::diameters(float* out, int max) const {
     IrqMask m;
     return voice_.diameters(out, max);
 }
 
 // ---- the audio interrupt ---------------------------------------------------------------------------------------
 
-void AudioSynthWindPipe::update(void) {
+void AudioSynthMonkMouth::update(void) {
     {
         IrqMask m;                                // ~100 bytes (~240 with a tuning), sub-microsecond
         voice_.latch();

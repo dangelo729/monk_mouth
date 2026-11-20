@@ -1,4 +1,4 @@
-// wind_pipe — wp_analysis.h
+// monk_mouth — mm_analysis.h
 // the host's measuring instruments: a radix-2 FFT, a formant picker that
 // feeds a unit impulse through a static tube, and a few spectrum helpers.
 // no source, no noise, no external analysis tools (plan §11). host only.
@@ -7,9 +7,9 @@
 #include <cmath>
 #include <vector>
 
-#include "core/wp_tube.h"
+#include "core/mm_tube.h"
 
-namespace wp {
+namespace mm {
 
 // in-place radix-2 FFT. n must be a power of two.
 inline void fft(std::vector<double>& re, std::vector<double>& im) {
@@ -165,4 +165,4 @@ inline double periodicity(const float* x, int n, int minLag, int maxLag) {
     return best;
 }
 
-}  // namespace wp
+}  // namespace mm

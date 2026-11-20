@@ -1,4 +1,4 @@
-// wind_pipe — tests/test_jet.cpp  (whistle plan §7.3, stage 1)
+// monk_mouth — tests/test_jet.cpp  (whistle plan §7.3, stage 1)
 // the jet at the lips: the airflow the body hands it, a bounded loop, silent
 // under a voice, and a whistle at a pose — which needs breath, rises with it,
 // dies through the nose and stops with the note.
@@ -12,11 +12,11 @@
 #include <cstring>
 #include <vector>
 
-#include "core/wp_voice.h"
-#include "wp_analysis.h"
-#include "wp_test.h"
+#include "core/mm_voice.h"
+#include "mm_analysis.h"
+#include "mm_test.h"
 
-using namespace wp;
+using namespace mm;
 
 namespace {
 
@@ -104,7 +104,7 @@ bool near(float a, float b, float rel) { return std::fabs(a - b) <= rel * std::f
 // the transit clamped, the areas floored. a closure anywhere zeroes the flow,
 // and the nose takes its share. the jet carries only what is steady: nothing
 // while the folds pulse, nothing through a slot cut into the lips below the pucker.
-WP_TEST(jet_airflow_follows_the_pose) {
+MM_TEST(jet_airflow_follows_the_pose) {
     auto pucker = [](Rig& r) {
         r.body.setBreath(0.8f);
         r.body.setGlottis(1.0f);
@@ -219,7 +219,7 @@ WP_TEST(jet_airflow_follows_the_pose) {
 // the jet's limits: finite, inside [-1, 1], no DC. at 1e30 Pa every whistle is
 // a full-scale square the output clamp cuts, and a clamped square's duty is
 // its own: there the DC is the clamp's, and only finite and inside is asked.
-WP_TEST(jet_is_bounded) {
+MM_TEST(jet_is_bounded) {
     struct Case { const char* name; float pressure, length, gain; bool clamped; };
     const Tuning d;
     const Case cases[] = {
@@ -273,7 +273,7 @@ WP_TEST(jet_is_bounded) {
 
 // under a voice the folds are the narrowest orifice and the jet is inert: a
 // sung line never reads as a whistle, and neither does a whispered wide vowel.
-WP_TEST(jet_is_inert_when_voiced) {
+MM_TEST(jet_is_inert_when_voiced) {
     const Syllable line[] = {{"S AA", 48.0f, 450}, {"Z UW M", 50.0f, 600}, {"F IY", 55.0f, 500},
                              {"HH OW", 60.0f, 450}, {"W UW", 67.0f, 600}};
     for (int n : kSizes) {
@@ -304,7 +304,7 @@ WP_TEST(jet_is_inert_when_voiced) {
 // the hand-found pose at breath 0.8 whistles: after 300 ms a clean periodic
 // tone at a sane level, on its lip mode, the jet swinging near its cap, the
 // second and third harmonics well under the fundamental.
-WP_TEST(voice_whistles_at_a_pose) {
+MM_TEST(voice_whistles_at_a_pose) {
     for (int n : kSizes) {
         // a 26's lip mode is lower and the jet's transit does not scale with
         // size: at 0.8 the jet pulls its pitch 8 % sharp of the mode (1065 Hz
@@ -333,7 +333,7 @@ WP_TEST(voice_whistles_at_a_pose) {
 }
 
 // the same pose at breath 0.1 does not whistle: the jet is too slow to lock.
-WP_TEST(voice_whistle_needs_breath) {
+MM_TEST(voice_whistle_needs_breath) {
     for (int n : kSizes) {
         Voice lock(n, 1), soft(n, 1);
         posePucker(lock, 0.8f);
@@ -348,7 +348,7 @@ WP_TEST(voice_whistle_needs_breath) {
 }
 
 // a faster jet is a shorter transit: the pitch rises a little with breath.
-WP_TEST(voice_whistle_rises_with_breath) {
+MM_TEST(voice_whistle_rises_with_breath) {
     for (int n : kSizes) {
         Voice lo(n, 1), hi(n, 1);
         posePucker(lo, 0.5f);
@@ -363,7 +363,7 @@ WP_TEST(voice_whistle_rises_with_breath) {
 }
 
 // air through the nose is air the lips never see: the whistle dies.
-WP_TEST(voice_whistle_dies_through_the_nose) {
+MM_TEST(voice_whistle_dies_through_the_nose) {
     for (int n : kSizes) {
         Voice v(n, 1);
         posePucker(v, 0.8f);
@@ -377,7 +377,7 @@ WP_TEST(voice_whistle_dies_through_the_nose) {
 
 // noteOff ends a whistle as it ends a note: the silence gate lands and the
 // jet's state is zero.
-WP_TEST(voice_whistle_stops_with_the_note) {
+MM_TEST(voice_whistle_stops_with_the_note) {
     for (int n : kSizes) {
         Voice v(n, 1);
         posePucker(v, 0.8f);

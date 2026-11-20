@@ -1,13 +1,13 @@
-// wind_pipe — tests/test_vocab.cpp  (plan: Tests / Vocabulary)
+// monk_mouth — tests/test_vocab.cpp  (plan: Tests / Vocabulary)
 #include <cstring>
 #include <string>
 #include <vector>
 
-#include "core/wp_voice.h"
-#include "wp_analysis.h"
-#include "wp_test.h"
+#include "core/mm_voice.h"
+#include "mm_analysis.h"
+#include "mm_test.h"
 
-using namespace wp;
+using namespace mm;
 
 namespace {
 
@@ -57,7 +57,7 @@ const int kMs = 44;                                                  // samples 
 }  // namespace
 
 // all 39 phonemes are there, parse by name, and nothing else does.
-WP_TEST(vocab_covers_arpabet) {
+MM_TEST(vocab_covers_arpabet) {
     int vowels = 0, consonants = 0;
     for (uint8_t p = 1; p < ph::count; ++p) {
         const char* name = phoneName(p);
@@ -83,7 +83,7 @@ WP_TEST(vocab_covers_arpabet) {
 }
 
 // monophthong F1 and F2 within +-15 % of target (the soft gate).
-WP_TEST(vocab_vowel_formants_near_target) {
+MM_TEST(vocab_vowel_formants_near_target) {
     for (int k = 0; k < kFormantTargetCount; ++k) {
         const FormantTarget& t = kFormantTargets[k];
         const F12 f = formantsOf(t.phone);
@@ -93,7 +93,7 @@ WP_TEST(vocab_vowel_formants_near_target) {
 }
 
 // the orderings hold strictly (the hard gate) — at every tested size.
-WP_TEST(vocab_vowel_orderings) {
+MM_TEST(vocab_vowel_orderings) {
     const uint8_t f1chain[] = {ph::IY, ph::IH, ph::EH, ph::AE};
     const uint8_t f2chain[] = {ph::UW, ph::AO, ph::AA, ph::AH, ph::ER, ph::AE, ph::EH, ph::IH, ph::IY};
     for (int n = kTestedSizeMin; n <= kTestedSizeMax; ++n) {
@@ -108,7 +108,7 @@ WP_TEST(vocab_vowel_orderings) {
 
 // the sung vowel carries the formants the static shape promised: each vowel
 // puts its energy where its own F2 is, not where the other's is.
-WP_TEST(vocab_sung_vowels_differ_as_their_shapes_do) {
+MM_TEST(vocab_sung_vowels_differ_as_their_shapes_do) {
     auto bandEnergy = [](uint8_t p, double centreHz) {
         const std::string name = phoneName(p);
         const Syllable syl[] = {{name.c_str(), 33.0f, 1500}};          // 55 Hz: harmonics dense enough to trace formants
@@ -133,7 +133,7 @@ WP_TEST(vocab_sung_vowels_differ_as_their_shapes_do) {
 }
 
 // stops: > 40 dB closure dip, a burst within 10 ms of release.
-WP_TEST(vocab_stops_dip_and_burst) {
+MM_TEST(vocab_stops_dip_and_burst) {
     for (uint8_t p : {(uint8_t)ph::B, (uint8_t)ph::D, (uint8_t)ph::G, (uint8_t)ph::P, (uint8_t)ph::T, (uint8_t)ph::K}) {
         for (const char* ctx : {"AA", "IY", "UW"}) {
             const std::string second = std::string(phoneName(p)) + " " + ctx;
@@ -158,7 +158,7 @@ WP_TEST(vocab_stops_dip_and_burst) {
 // a burst is never louder than the vowel it opens into, at any size or
 // diction. the same syllable sung with and without a burst differs by the
 // burst alone: same seed, and the tube is linear.
-WP_TEST(vocab_bursts_stay_under_the_vowel) {
+MM_TEST(vocab_bursts_stay_under_the_vowel) {
     auto take = [](int n, const std::string& syl, float diction, float burstGain) {
         Voice v(n, 1);
         Tuning t;
@@ -194,7 +194,7 @@ WP_TEST(vocab_bursts_stay_under_the_vowel) {
 }
 
 // nasals murmur through the closure and do not burst.
-WP_TEST(vocab_nasals_murmur_without_burst) {
+MM_TEST(vocab_nasals_murmur_without_burst) {
     for (uint8_t p : {(uint8_t)ph::M, (uint8_t)ph::N, (uint8_t)ph::NG}) {
         const std::string second = std::string(phoneName(p)) + " AA";
         const Take t = singPair("AA", second.c_str());
@@ -206,7 +206,7 @@ WP_TEST(vocab_nasals_murmur_without_burst) {
 }
 
 // S centroid above SH — measured on the table's own places and degrees.
-WP_TEST(vocab_s_is_brighter_than_sh) {
+MM_TEST(vocab_s_is_brighter_than_sh) {
     auto centroidOf = [](uint8_t p) {
         const Consonant& c = consonant(p);
         Voice v;
@@ -225,7 +225,7 @@ WP_TEST(vocab_s_is_brighter_than_sh) {
 }
 
 // voiceless spans are aperiodic; the vowels around them are not.
-WP_TEST(vocab_voiceless_spans_are_aperiodic) {
+MM_TEST(vocab_voiceless_spans_are_aperiodic) {
     const int lagLo = (int)(kDefaultFs / 140.0f), lagHi = (int)(kDefaultFs / 90.0f);   // around 110 Hz
     for (uint8_t p : {(uint8_t)ph::S, (uint8_t)ph::SH, (uint8_t)ph::F, (uint8_t)ph::TH, (uint8_t)ph::HH}) {
         const std::string second = std::string(phoneName(p)) + " AA";
@@ -240,7 +240,7 @@ WP_TEST(vocab_voiceless_spans_are_aperiodic) {
 }
 
 // every phoneme, in three vowel contexts, both positions: renders, sounds, stays finite, ends in silence.
-WP_TEST(vocab_every_phoneme_renders) {
+MM_TEST(vocab_every_phoneme_renders) {
     for (uint8_t p = ph::firstConsonant; p <= ph::lastConsonant; ++p) {
         for (const char* ctx : {"AA", "IY", "UW"}) {
             const std::string cv = std::string(phoneName(p)) + " " + ctx;

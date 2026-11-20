@@ -1,5 +1,5 @@
 #######################################
-# Syntax coloring map for WindPipe
+# Syntax coloring map for MonkMouth
 # (fields are TAB-separated — required)
 #######################################
 
@@ -7,8 +7,8 @@
 # Datatypes / classes (KEYWORD1)
 #######################################
 
-AudioSynthWindPipe	KEYWORD1
-WindPipe	KEYWORD1
+AudioSynthMonkMouth	KEYWORD1
+MonkMouth	KEYWORD1
 Voice	KEYWORD1
 Syllable	KEYWORD1
 Speech	KEYWORD1
@@ -63,7 +63,7 @@ parsePhone	KEYWORD2
 # Constants and namespaces (LITERAL1)
 #######################################
 
-wp	LITERAL1
+mm	LITERAL1
 ph	LITERAL1
 kDefaultSections	LITERAL1
 kMinSections	LITERAL1

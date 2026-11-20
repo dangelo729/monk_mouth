@@ -1,4 +1,4 @@
-// wind_pipe — wp_body.h  (plan §4, §5; whistle plan §2)
+// monk_mouth — mm_body.h  (plan §4, §5; whistle plan §2)
 // the body: a pose eased toward its targets, turned into diameters once per
 // block, and watched for the three things a tube cannot know about itself —
 // where it hisses, when a closure lets go, and how hard.
@@ -7,11 +7,11 @@
 // the body has no events. a stop bursts because a closed section opened.
 #pragma once
 
-#include "wp_config.h"
-#include "wp_tube.h"
-#include "wp_tuning.h"
+#include "mm_config.h"
+#include "mm_tube.h"
+#include "mm_tuning.h"
 
-namespace wp {
+namespace mm {
 
 // ---- anatomy (§4): a pure function of the pose -----------------------------------
 // raw anatomy units: tongueX in [kTongueXMin, kTongueXMax], tongueD in
@@ -191,4 +191,4 @@ private:
     BodyFrame frame_;
 };
 
-}  // namespace wp
+}  // namespace mm

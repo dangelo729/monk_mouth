@@ -1,16 +1,16 @@
-// wind_pipe — tests/test_tube.cpp  (plan: Tests / Tube)
+// monk_mouth — tests/test_tube.cpp  (plan: Tests / Tube)
 #include <cmath>
 #include <vector>
 
-#include "core/wp_glottis.h"
-#include "core/wp_tube.h"
-#include "wp_analysis.h"
-#include "wp_test.h"
+#include "core/mm_glottis.h"
+#include "core/mm_tube.h"
+#include "mm_analysis.h"
+#include "mm_test.h"
 
-using namespace wp;
+using namespace mm;
 
 // a uniform tube resonates at (2n-1) Fs / 4N, +-2 %, at every tested size.
-WP_TEST(tube_uniform_resonances) {
+MM_TEST(tube_uniform_resonances) {
     for (int n = kTestedSizeMin; n <= kTestedSizeMax; ++n) {
         std::vector<float> d((size_t)n, 1.5f);
         const std::vector<double> f = formants(n, d.data(), kVelumShut, kDefaultFs, 6000.0);
@@ -27,7 +27,7 @@ WP_TEST(tube_uniform_resonances) {
 // between whole lengths too: a uniform tube a quarter, a half and three
 // quarters of a section past each whole one resonates at (2n-1) Fs / 4L, +-2 %.
 // its ends' pieces are lengths, not approximations of the nearest whole one.
-WP_TEST(tube_uniform_resonances_between_whole_lengths) {
+MM_TEST(tube_uniform_resonances_between_whole_lengths) {
     for (int whole = kTestedSizeMin; whole < kTestedSizeMax; ++whole) {
         for (float part : {0.25f, 0.5f, 0.75f}) {
             const float length = (float)whole + part;
@@ -46,7 +46,7 @@ WP_TEST(tube_uniform_resonances_between_whole_lengths) {
 
 // a whole length lays out as a tube built at it always has: every section
 // whole, the nose joined and as long as the reference's ratios round to.
-WP_TEST(tube_whole_lengths_lay_out_as_ever) {
+MM_TEST(tube_whole_lengths_lay_out_as_ever) {
     for (int n = kMinSections; n <= kMaxSections; ++n) {
         const Layout at = layoutFor((float)n);
         CHECK_MSG(at.n == n && at.ns == (int)std::lround(n * 17.0 / 44.0) && at.m == (int)std::lround(n * 28.0 / 44.0),
@@ -57,7 +57,7 @@ WP_TEST(tube_whole_lengths_lay_out_as_ever) {
 }
 
 // random static shapes: an impulse's energy decays, whatever the shape.
-WP_TEST(tube_energy_decays) {
+MM_TEST(tube_energy_decays) {
     Rng rng; rng.seed(1234);
     for (int trial = 0; trial < 200; ++trial) {
         const int n = kMinSections + (int)(rng.next() % (kMaxSections - kMinSections + 1));
@@ -112,7 +112,7 @@ static double voicedRms(int n, const float* d, float velum) {
 // a closed section drops the output > 50 dB. sealed velum: this is the tube's
 // own closure. with the reference's "shut" velum of 0.01 the nose leaks a
 // little, and the floor is the stop spec's 40 dB instead.
-WP_TEST(tube_closure_drops_output) {
+MM_TEST(tube_closure_drops_output) {
     for (int n : {16, 22, 26}) {
         for (int where : {n / 2, n * 3 / 4, n - 1}) {
             std::vector<float> open((size_t)n, 1.5f), shut((size_t)n, 1.5f);
@@ -126,7 +126,7 @@ WP_TEST(tube_closure_drops_output) {
 }
 
 // with the mouth shut and the velum open the output survives: the murmur.
-WP_TEST(tube_nasal_murmur_survives) {
+MM_TEST(tube_nasal_murmur_survives) {
     for (int n : {16, 22, 26}) {
         std::vector<float> open((size_t)n, 1.5f), shut((size_t)n, 1.5f);
         shut[(size_t)n - 1] = 0.0f;
@@ -140,7 +140,7 @@ WP_TEST(tube_nasal_murmur_survives) {
 
 // with the velum shut the three-port collapses to the plain two-port junction:
 // the nose does not colour an oral vowel.
-WP_TEST(tube_shut_velum_is_transparent) {
+MM_TEST(tube_shut_velum_is_transparent) {
     std::vector<float> d(22, 1.5f);
     const std::vector<double> f = formants(22, d.data(), kVelumShut);
     const std::vector<double> g = formants(22, d.data(), 0.0f);
@@ -149,7 +149,7 @@ WP_TEST(tube_shut_velum_is_transparent) {
 }
 
 // the halfband passes DC at unity, kills Fs/2, and halves Fs/4.
-WP_TEST(halfband_response) {
+MM_TEST(halfband_response) {
     auto gainAt = [](double cyclesPerSample) {
         Halfband hb;
         double peak = 0.0;

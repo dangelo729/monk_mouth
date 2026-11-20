@@ -1,11 +1,11 @@
-// wind_pipe — AudioSynthWindPipe.h  (plan §10)
+// monk_mouth — AudioSynthMonkMouth.h  (plan §10)
 // the one file that knows the platform. one custom AudioStream, zero inputs,
-// one output; it owns a wp::Voice and nothing else. polyphony is N instances
+// one output; it owns a mm::Voice and nothing else. polyphony is N instances
 // into a stock mixer. no heap after construction.
 //
 // the ENTIRE contents — includes too — sit inside #if defined(ARDUINO), so
-// the umbrella WindPipe.h stays safe on the host: there this header is
-// nothing, and tests and tools use wp::Voice directly. there is no host twin.
+// the umbrella MonkMouth.h stays safe on the host: there this header is
+// nothing, and tests and tools use mm::Voice directly. there is no host twin.
 //
 // handoff (plan §10): no lanes, no locks, no ordering rules.
 //
@@ -44,14 +44,14 @@
 #include <Arduino.h>
 #include <AudioStream.h>
 
-#include "core/wp_voice.h"
+#include "core/mm_voice.h"
 
-class AudioSynthWindPipe : public AudioStream {
+class AudioSynthMonkMouth : public AudioStream {
 public:
     // size is in sections, whole or not, set at construction and live by setSections:
     // 22 = 17.5 cm (adult male), 19 ~ 15 cm, 16 ~ 12.7 cm, up to 26. one seeded xorshift32 per voice:
     // give each voice of a choir its own seed. statically allocate, never destroy.
-    explicit AudioSynthWindPipe(float sections = wp::kDefaultSections, uint32_t seed = 1);
+    explicit AudioSynthMonkMouth(float sections = mm::kDefaultSections, uint32_t seed = 1);
 
     // lungs + larynx
     void setBreath(float p01);              // the loudness axis; 0 = silent
@@ -68,9 +68,9 @@ public:
     void setGlide(float perSec);            // 0 = jump
     void setVibrato(float rateHz, float cents, float onsetSec);
     void setWobble(float amount01);
-    // who is singing: every tunable at once (core/wp_tuning.h), held inside its hard limits
-    void setTuning(const wp::Tuning& t);
-    wp::Tuning tuning() const;              // the last one asked for, as clamped
+    // who is singing: every tunable at once (core/mm_tuning.h), held inside its hard limits
+    void setTuning(const mm::Tuning& t);
+    mm::Tuning tuning() const;              // the last one asked for, as clamped
     void setSections(float sections);       // the size, live: a held note carries on at the new length
     // conveniences
     void noteOn(float midi, float vel01);   // pitch + breath + vibrato onset, one block
@@ -79,22 +79,22 @@ public:
     // words (plan §9). false = bad phoneme or overflow, and nothing was disturbed.
     // main loop only (see above).
     bool syllable(const char* phones);      // now, at the current note
-    bool sing(const wp::Syllable* syls, int n);
-    bool sing(const wp::Syllable* syls, int n, float breath);   // at this breath; the voice's own level stays
+    bool sing(const mm::Syllable* syls, int n);
+    bool sing(const mm::Syllable* syls, int n, float breath);   // at this breath; the voice's own level stays
     bool say(const char* phones);
-    bool speak(const char* phones);                     // spoken, not sung: wp::Speech() defaults
-    bool speak(const char* phones, const wp::Speech& s); // baseline, range, speed, breath (core/wp_score.h)
+    bool speak(const char* phones);                     // spoken, not sung: mm::Speech() defaults
+    bool speak(const char* phones, const mm::Speech& s); // baseline, range, speed, breath (core/mm_score.h)
     void stop();
     bool busy() const;                      // a volatile read of a flag the audio side keeps
     // readback, as of the end of the last block
-    wp::BodyState state() const;            // eased pose, f0, voicing, hiss, closed, phoneme
+    mm::BodyState state() const;            // eased pose, f0, voicing, hiss, closed, phoneme
     int  diameters(float* out, int max) const;
 
     float sections() const { return voice_.sections(); }  // the last size asked for
     void setHalfband(bool on);              // the output lowpass: keep or drop by ear (a CPU lever)
 
     // the audio interrupt: latch targets (masked), render one block through
-    // wp::Voice (unmasked), clamp, scale to int16, transmit, release. if
+    // mm::Voice (unmasked), clamp, scale to int16, transmit, release. if
     // allocate() returns NULL the block is still rendered, so scores keep time.
     // no Serial, no heap, no I2C in here.
     virtual void update(void);
@@ -102,7 +102,7 @@ public:
 private:
     static void initFlushToZero();
 
-    wp::Voice voice_;
+    mm::Voice voice_;
     float     scratch_[AUDIO_BLOCK_SAMPLES];
 };
 

@@ -1,9 +1,9 @@
-// wind_pipe — wp_tuning.cpp
-#include "wp_tuning.h"
+// monk_mouth — mm_tuning.cpp
+#include "mm_tuning.h"
 
-#include "wp_config.h"
+#include "mm_config.h"
 
-namespace wp {
+namespace mm {
 namespace {
 
 // a band's q divides its coefficients: at zero and below the filter is not one
@@ -71,4 +71,4 @@ Tuning clamped(const Tuning& in, float fs) {
     return t;
 }
 
-}  // namespace wp
+}  // namespace mm

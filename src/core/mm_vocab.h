@@ -1,14 +1,14 @@
-// wind_pipe — wp_vocab.h  (plan §8; whistle plan §6)
+// monk_mouth — mm_vocab.h  (plan §8; whistle plan §6)
 // the data: two small tables covering all 39 ARPABET phonemes. vowels are
 // poses (tongue + lips, optionally a second pose for a diphthong); consonants
 // are a kind, a place, a degree and their timing. everything here is tuned,
-// first by `wptool fit`, then by ear. beside them, the whistle's vocabulary:
-// one pose per semitone, fitted by `wptool whistle fit`.
+// first by `mmtool fit`, then by ear. beside them, the whistle's vocabulary:
+// one pose per semitone, fitted by `mmtool whistle fit`.
 #pragma once
 
-#include "wp_config.h"
+#include "mm_config.h"
 
-namespace wp {
+namespace mm {
 
 namespace ph {
 enum : uint8_t {
@@ -77,4 +77,4 @@ extern const int kWhistleCount;
 // the nearer row's), clamped at the ends.
 WhistlePose whistlePose(float tableMidi);
 
-}  // namespace wp
+}  // namespace mm

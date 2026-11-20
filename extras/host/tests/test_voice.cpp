@@ -1,14 +1,14 @@
-// wind_pipe — tests/test_voice.cpp  (plan: Tests / Voice)
+// monk_mouth — tests/test_voice.cpp  (plan: Tests / Voice)
 // all of it at N = 22, and again at N = 16 and N = 26.
 #include <cmath>
 #include <cstring>
 #include <vector>
 
-#include "core/wp_voice.h"
-#include "wp_analysis.h"
-#include "wp_test.h"
+#include "core/mm_voice.h"
+#include "mm_analysis.h"
+#include "mm_test.h"
 
-using namespace wp;
+using namespace mm;
 
 namespace {
 
@@ -44,7 +44,7 @@ void thrash(Voice& v, Rng& r) {
 }  // namespace
 
 // 60 s of random target thrash: finite, |x| <= 1, DC < 1e-3.
-WP_TEST(voice_survives_target_thrash) {
+MM_TEST(voice_survives_target_thrash) {
     for (int n : kSizes) {
         Voice v(n, 7);
         Rng r; r.seed(1000u + (uint32_t)n);
@@ -74,7 +74,7 @@ WP_TEST(voice_survives_target_thrash) {
 // every target stepped between extremes: the first difference stays bounded — no clicks.
 // the yardstick is the voice's own steepest edge: the glottal closure of a held note,
 // at the top of the stepped pitch range and fully tense.
-WP_TEST(voice_target_steps_do_not_click) {
+MM_TEST(voice_target_steps_do_not_click) {
     for (int n : kSizes) {
         auto maxStep = [n](int which) {
             Voice v(n, 3);
@@ -114,7 +114,7 @@ WP_TEST(voice_target_steps_do_not_click) {
 }
 
 // breath off -> exact zeros within 500 ms.
-WP_TEST(voice_breath_off_reaches_exact_zero) {
+MM_TEST(voice_breath_off_reaches_exact_zero) {
     for (int n : kSizes) {
         for (int shape = 0; shape < 3; ++shape) {
             Voice v(n, 5);
@@ -138,7 +138,7 @@ WP_TEST(voice_breath_off_reaches_exact_zero) {
 // same seed, same calls -> identical bytes. and the block the caller renders in
 // does not matter: control runs every 128 samples inside the library. the
 // whistle's telemetry is as exact as the samples, and so is a held whistle.
-WP_TEST(voice_is_deterministic) {
+MM_TEST(voice_is_deterministic) {
     for (int n : kSizes) {
         auto run = [n](uint32_t seed, int chunk) {
             Voice v(n, seed);
@@ -170,7 +170,7 @@ WP_TEST(voice_is_deterministic) {
 }
 
 // a held vowel is a periodic signal at the asked pitch, at a sane level.
-WP_TEST(voice_holds_a_note) {
+MM_TEST(voice_holds_a_note) {
     for (int n : kSizes) {
         Voice v(n, 1);
         v.setWobble(0.0f);
@@ -189,7 +189,7 @@ WP_TEST(voice_holds_a_note) {
 }
 
 // the readback tells the truth about the body.
-WP_TEST(voice_state_readback) {
+MM_TEST(voice_state_readback) {
     Voice v;
     float buf[kBlock];
     v.setTongue(0.25f, 0.75f);
@@ -250,7 +250,7 @@ WP_TEST(voice_state_readback) {
 // the readback's vibrato is the one sung: nothing through the onset's wait,
 // then bloomed to the asked depth at the asked speed, and with no wobble it
 // is all of f0's swing off the note.
-WP_TEST(voice_state_reads_the_vibrato) {
+MM_TEST(voice_state_reads_the_vibrato) {
     Voice v;
     float buf[kBlock];
     v.setWobble(0.0f);
@@ -281,7 +281,7 @@ WP_TEST(voice_state_reads_the_vibrato) {
 }
 
 // a target set between blocks lands at the top of the next block, for everything.
-WP_TEST(voice_one_latency) {
+MM_TEST(voice_one_latency) {
     Voice v;
     float buf[kBlock];
     v.render(buf, kBlock);
@@ -294,7 +294,7 @@ WP_TEST(voice_one_latency) {
 // the last writer wins in the caller's own order, across channels too: a
 // stop() shuts the breath, so a noteOn called after it — in the same block —
 // must still sing.
-WP_TEST(voice_stop_then_note_on_sings) {
+MM_TEST(voice_stop_then_note_on_sings) {
     Voice v;
     float buf[kBlock];
     const Syllable line[] = {{"L AA", 48, 2000}};
@@ -314,7 +314,7 @@ WP_TEST(voice_stop_then_note_on_sings) {
 // sing() at a breath: the line sings at that level — half the breath is half
 // the sound, within a dB — and leaves the voice's own level alone, so a plain
 // sing() afterwards is as loud as it ever was.
-WP_TEST(voice_sings_a_line_at_a_given_breath) {
+MM_TEST(voice_sings_a_line_at_a_given_breath) {
     const Syllable line[] = {{"L AA", 48.0f, 600}, {"M IY", 50.0f, 600}};
     auto take = [&](Voice& v, float breath, float& peakBreath) {
         CHECK(breath > 0.0f ? v.sing(line, 2, breath) : v.sing(line, 2));
@@ -344,7 +344,7 @@ WP_TEST(voice_sings_a_line_at_a_given_breath) {
 // the pose, the pitch, the source and the noise never knew the size, and the
 // pipe keeps nothing of the length it had. a word is under way at the resize.
 // whole sizes and not.
-WP_TEST(voice_resized_is_the_voice_built_at_that_size) {
+MM_TEST(voice_resized_is_the_voice_built_at_that_size) {
     const float pairs[][2] = {{22, 30}, {22, 16}, {16, 40}, {40, 14}, {22, 22.5f}, {22.25f, 30.6f}, {30.6f, 17.3f}};
     for (const auto& p : pairs) {
         Voice a(p[0], 9), b(p[1], 9);
@@ -386,7 +386,7 @@ WP_TEST(voice_resized_is_the_voice_built_at_that_size) {
 // no step between samples is steeper than the voice's own steepest held edge.
 // a whistle held through a slide from 18 to 26 over 4 s stays locked in
 // nearly every block, on every row of its table.
-WP_TEST(voice_size_slides) {
+MM_TEST(voice_size_slides) {
     auto steepest = [](Voice& v, int samples) {
         std::vector<float> x((size_t)samples);
         v.render(x.data(), samples);
@@ -435,7 +435,7 @@ WP_TEST(voice_size_slides) {
 // a voice takes any size the arrays hold, and at every one of them it sings a
 // line with a hiss, a nasal and a stop in it: finite, inside [-1, 1], not
 // silent, and quiet again afterwards. the limits on size are memory's.
-WP_TEST(voice_sings_at_every_legal_size) {
+MM_TEST(voice_sings_at_every_legal_size) {
     const Syllable line[] = {{"S AA", 48.0f, 300}, {"M IY", 50.0f, 300}, {"B UW", 52.0f, 300}};
     for (int n = kMinSections; n <= kMaxSections; ++n) {
         Voice v(n, 11);

@@ -1,12 +1,12 @@
-wind_pipe — NOTICE
+monk_mouth — NOTICE
 Third-party attributions and data provenance.
 
-wind_pipe itself is licensed under the MIT License (see LICENSE).
+monk_mouth itself is licensed under the MIT License (see LICENSE).
 
 --------------------------------------------------------------------------
 1. Pink Trombone (port basis)
 --------------------------------------------------------------------------
-The tube and the glottis of wind_pipe are a float32 C++ port of Pink
+The tube and the glottis of monk_mouth are a float32 C++ port of Pink
 Trombone, "bare-handed procedural speech synthesis", version 1.1, March 2017,
 by Neil Thapen:
 
@@ -14,21 +14,21 @@ by Neil Thapen:
 
 What is ported:
 
-  - the tube (src/core/wp_tube.*): the Kelly-Lochbaum waveguide of
+  - the tube (src/core/mm_tube.*): the Kelly-Lochbaum waveguide of
     Tract.runStep — junction scattering, the glottal and lip reflections,
     the fixed-profile nose branch and its three-port junction, and the
     reflection-coefficient interpolation — run here at 22 sections x 1 step
     per sample instead of the reference's 44 x 2.
-  - the glottis (src/core/wp_glottis.*): the Liljencrants-Fant pulse set-up
+  - the glottis (src/core/mm_glottis.*): the Liljencrants-Fant pulse set-up
     of Glottis.setupWaveform, line for line, and the noise modulator of
-    Glottis.getNoiseModulator (src/core/wp_noise.h).
-  - the anatomy (src/core/wp_body.*): the tongue curve of
+    Glottis.getNoiseModulator (src/core/mm_noise.h).
+  - the anatomy (src/core/mm_body.*): the tongue curve of
     TractUI.setRestDiameter, the constriction shape of TractUI.handleTouches,
     the throat / lip / velum landmarks, the release transient of
     Tract.addTransient and the turbulence window of
     Tract.addTurbulenceNoiseAtIndex, all re-expressed as fractions of tract
     length.
-  - the vowel pose seeds in src/core/wp_vocab.cpp were read from the labels
+  - the vowel pose seeds in src/core/mm_vocab.cpp were read from the labels
     of TractUI.drawPositions.
 
 Everything else — the body's dynamics, the pitch axis, the vocabulary's
@@ -77,8 +77,8 @@ Pink Trombone's own bibliography, which is therefore this library's too:
 --------------------------------------------------------------------------
 2. Peterson & Barney (1952) vowel formants (data provenance)
 --------------------------------------------------------------------------
-The vowel targets that `wptool fit` searches against (kFormantTargets in
-src/core/wp_vocab.cpp) are the adult-male mean F1 / F2 (and F3 for ER)
+The vowel targets that `mmtool fit` searches against (kFormantTargets in
+src/core/mm_vocab.cpp) are the adult-male mean F1 / F2 (and F3 for ER)
 values published in:
 
   - Peterson, G. E., & Barney, H. L. (1952). "Control methods used in a

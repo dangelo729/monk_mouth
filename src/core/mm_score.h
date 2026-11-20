@@ -1,13 +1,13 @@
-// wind_pipe — wp_score.h  (plan §9)
+// monk_mouth — mm_score.h  (plan §9)
 // words on notes. the compiler turns phonemes into a time-sorted list of
 // (tick, channel, target, rate); the player pops due events into the same
 // target table the live setters write. scripted singing is a scripted hand.
 #pragma once
 
-#include "wp_config.h"
-#include "wp_vocab.h"
+#include "mm_config.h"
+#include "mm_vocab.h"
 
-namespace wp {
+namespace mm {
 
 // phones: ARPABET, space-separated, stress digits accepted; "_" = rest; "" = melisma
 struct Syllable { const char* phones; float midi; uint16_t ms; };
@@ -154,4 +154,4 @@ private:
     uint32_t now_ = 0;
 };
 
-}  // namespace wp
+}  // namespace mm

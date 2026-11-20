@@ -1,25 +1,25 @@
-// wind_pipe — wptool.cpp  (plan §11)
+// monk_mouth — mmtool.cpp  (plan §11)
 // the one CLI. renders WAVs for the ear and numbers for the tables.
 //
-//   wptool vowel AA --midi 48 --sec 2 -o aa.wav         ("rest" = the reference's rest shape)
-//   wptool pose --tongue .3 .8 --lips .9 -o pose.wav
-//   wptool formants --tongue .3 .8 --lips .9            F1..F4 of a static shape (or: formants AA)
-//   wptool fit                                          grid-search every vowel pose
-//   wptool syllable "B AA" -o ba.wav
-//   wptool sing song.txt -o song.wav                    one "phones midi ms" per line
-//   wptool say "HH AH0 L OW1 / W ER1 L D" -o hello.wav
-//   wptool speak "S T AA1 P / DH AE2 T" --midi 50 --range 5 --speed 1 -o stop.wav   spoken, not sung
-//   wptool corpus corpus build/corpus                   everything, for the ear
-//   wptool trace "AA B AA"                              10 ms frames: what the body did, what came out
+//   mmtool vowel AA --midi 48 --sec 2 -o aa.wav         ("rest" = the reference's rest shape)
+//   mmtool pose --tongue .3 .8 --lips .9 -o pose.wav
+//   mmtool formants --tongue .3 .8 --lips .9            F1..F4 of a static shape (or: formants AA)
+//   mmtool fit                                          grid-search every vowel pose
+//   mmtool syllable "B AA" -o ba.wav
+//   mmtool sing song.txt -o song.wav                    one "phones midi ms" per line
+//   mmtool say "HH AH0 L OW1 / W ER1 L D" -o hello.wav
+//   mmtool speak "S T AA1 P / DH AE2 T" --midi 50 --range 5 --speed 1 -o stop.wav   spoken, not sung
+//   mmtool corpus corpus build/corpus                   everything, for the ear
+//   mmtool trace "AA B AA"                              10 ms frames: what the body did, what came out
 //                                                       (--speak: through speak(), with --range --speed)
-//   wptool throat [step]                                sweep the throat: where the vowel gates hold
-//   wptool whistle --tongue .8 .6 --lips .2 -o w.wav    a live whistle pose: lock, level, pitch against the lip modes
-//   wptool whistle 84 -o w.wav                          a note through Voice::whistle and the table: the same report
-//   wptool whistle fit                                  grid-search the whistle table; prints the block for wp_vocab.cpp
+//   mmtool throat [step]                                sweep the throat: where the vowel gates hold
+//   mmtool whistle --tongue .8 .6 --lips .2 -o w.wav    a live whistle pose: lock, level, pitch against the lip modes
+//   mmtool whistle 84 -o w.wav                          a note through Voice::whistle and the table: the same report
+//   mmtool whistle fit                                  grid-search the whistle table; prints the block for mm_vocab.cpp
 //
 // common options: --size N (sections, whole or not, 16..26)  --seed S  --midi M  --sec T
 //                 --breath B  --tense T  --no-halfband  --no-wobble
-//                 --tune NAME=VALUE (any field of wp::Tuning; repeatable)
+//                 --tune NAME=VALUE (any field of mm::Tuning; repeatable)
 //                 --png FILE (a spectrogram of the render: 0-8 kHz, ticks every 100 ms)
 #include <cstdio>
 #include <cstdlib>
@@ -36,12 +36,12 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
-#include "core/wp_voice.h"
-#include "wp_analysis.h"
-#include "wp_png.h"
-#include "wp_wav.h"
+#include "core/mm_voice.h"
+#include "mm_analysis.h"
+#include "mm_png.h"
+#include "mm_wav.h"
 
-using namespace wp;
+using namespace mm;
 
 namespace {
 
@@ -62,7 +62,7 @@ struct Args {
     bool  tuned = false;
 };
 
-// --tune NAME=VALUE: every field of wp::Tuning, by name
+// --tune NAME=VALUE: every field of mm::Tuning, by name
 struct TuneField { const char* name; float Tuning::* field; };
 const TuneField kTuneFields[] = {
     {"glottisRest", &Tuning::glottisRest},             {"growl", &Tuning::growl},
@@ -314,7 +314,7 @@ int cmdFit(const Args& a) {
     }
     pick[ph::UH] = candidates(*targetOf(ph::UH))[0].second;       // UH is in neither chain
 
-    printf("// fitted by `wptool fit` over %d tubes, N = %g, orderings enforced with a %.0f %% margin.\n",
+    printf("// fitted by `mmtool fit` over %d tubes, N = %g, orderings enforced with a %.0f %% margin.\n",
            (int)grid.size(), (double)a.size, 100.0 * (margin - 1.0));
     printf("// targets: Peterson & Barney 1952, adult male.   tongueX tongueD lipD       F1 (target)  F2 (target)   residual\n");
     for (int k = 0; k < kFormantTargetCount; ++k) {
@@ -370,7 +370,7 @@ int throatGates(const Tuning& t) {
 int cmdThroat(const Args& a) {
     const float lo = 0.2f, hi = 1.5f;
     const float step = a.pos.empty() ? 0.05f : (float)atof(a.pos[0].c_str());
-    if (step < 0.005f || step > 0.5f) { fprintf(stderr, "usage: wptool throat [step 0.005..0.5]\n"); return 1; }
+    if (step < 0.005f || step > 0.5f) { fprintf(stderr, "usage: mmtool throat [step 0.005..0.5]\n"); return 1; }
     const Tuning fit;                                      // the fitted throat: the defaults
     const int cells = (int)std::lround((hi - lo) / step) + 1;
     const int fitD = (int)std::lround((fit.throatD - lo) / step), fitUpper = (int)std::lround((fit.throatUpperD - lo) / step);
@@ -553,7 +553,7 @@ int cmdSing(const Args& a) {
 // ---- corpus: every phoneme in three vowel contexts plus the sung lines ---------------------------------
 
 int cmdCorpus(const Args& a) {
-    if (a.pos.size() < 2) { fprintf(stderr, "usage: wptool corpus <corpusDir> <outDir>\n"); return 1; }
+    if (a.pos.size() < 2) { fprintf(stderr, "usage: mmtool corpus <corpusDir> <outDir>\n"); return 1; }
     const std::string in = a.pos[0], outDir = a.pos[1];
     mkdir(outDir.c_str(), 0755);
     const char* ctx[] = {"AA", "IY", "UW"};
@@ -917,7 +917,7 @@ int cmdWhistleFit(const Args& a) {
     const int midiLo = mLo + runLo;
     double worstCents = 0.0, worstDrift = 0.0;
     int flips = 0;
-    printf("// fitted by `wptool whistle fit`: %d poses screened, %d rendered, %d lock; N = %g, breath %.2f, %.2f s.\n",
+    printf("// fitted by `mmtool whistle fit`: %d poses screened, %d rendered, %d lock; N = %g, breath %.2f, %.2f s.\n",
            (int)grid.size(), (int)cands.size(), (int)locks.size(), (double)a.size, breath, sec);
     printf("// a lock: periodicity above %.2f and whistle above %.1f after 300 ms. every lock also rendered at breath\n"
            "// 0.5 and 1.0 and at N = %d and %d; the cost trades cents, off-mode, held locks and size error against pose jumps.\n"
@@ -974,7 +974,7 @@ int cmdWhistle(const Args& a) {
         if (whistleReport(v, x, mean)) return 1;
         return finish(x, a);
     }
-    if (a.tonguePos < 0.0f || a.lips < 0.0f) { fprintf(stderr, "usage: wptool whistle NOTE | fit | --tongue POS HEIGHT --lips L ...\n"); return 1; }
+    if (a.tonguePos < 0.0f || a.lips < 0.0f) { fprintf(stderr, "usage: mmtool whistle NOTE | fit | --tongue POS HEIGHT --lips L ...\n"); return 1; }
     v.setGlottis(1.0f);
     v.setTongue(a.tonguePos, a.tongueHeight);
     v.setLips(a.lips);
@@ -993,27 +993,27 @@ int cmdWhistle(const Args& a) {
 
 void usage() {
     fprintf(stderr,
-        "wptool vowel AA|rest [--midi 48] [--sec 2] -o aa.wav\n"
-        "wptool pose --tongue POS HEIGHT --lips L [--velum V] -o pose.wav\n"
-        "wptool formants AA | --tongue POS HEIGHT --lips L\n"
-        "wptool fit\n"
-        "wptool syllable \"B AA\" -o ba.wav\n"
-        "wptool sing song.txt -o song.wav\n"
-        "wptool say \"HH AH0 L OW1 / W ER1 L D\" -o hello.wav\n"
-        "wptool speak \"S T AA1 P / DH AE2 T\" [--midi M] [--range R] [--speed S] [--breath B] -o stop.wav\n"
+        "mmtool vowel AA|rest [--midi 48] [--sec 2] -o aa.wav\n"
+        "mmtool pose --tongue POS HEIGHT --lips L [--velum V] -o pose.wav\n"
+        "mmtool formants AA | --tongue POS HEIGHT --lips L\n"
+        "mmtool fit\n"
+        "mmtool syllable \"B AA\" -o ba.wav\n"
+        "mmtool sing song.txt -o song.wav\n"
+        "mmtool say \"HH AH0 L OW1 / W ER1 L D\" -o hello.wav\n"
+        "mmtool speak \"S T AA1 P / DH AE2 T\" [--midi M] [--range R] [--speed S] [--breath B] -o stop.wav\n"
         "                                              spoken: stress sets length, accent and loudness\n"
-        "wptool corpus <corpusDir> <outDir>\n"
-        "wptool trace \"AA B AA\" [-o trace.wav]        10 ms frames: level, periodicity, centroid, body\n"
+        "mmtool corpus <corpusDir> <outDir>\n"
+        "mmtool trace \"AA B AA\" [-o trace.wav]        10 ms frames: level, periodicity, centroid, body\n"
         "             [--speak --range R --speed S]    the line through speak() instead of say()\n"
-        "wptool throat [step]                          sweep the throat: where the vowel gates hold\n"
-        "wptool whistle --tongue POS HEIGHT --lips L [--slot PLACE DEGREE] [--breath B] [--sec 1.5] -o w.wav\n"
+        "mmtool throat [step]                          sweep the throat: where the vowel gates hold\n"
+        "mmtool whistle --tongue POS HEIGHT --lips L [--slot PLACE DEGREE] [--breath B] [--sec 1.5] -o w.wav\n"
         "                                              a live whistle pose: lock, level, pitch against the lip modes\n"
-        "wptool whistle NOTE [--breath B] [--sec 1.5] [--size N] -o w.wav\n"
+        "mmtool whistle NOTE [--breath B] [--sec 1.5] [--size N] -o w.wav\n"
         "                                              a note through whistle(midi, breath) and the table: the same report\n"
-        "wptool whistle fit [--size N] [--breath 0.8] [--sec 0.5] [--tune ...]\n"
+        "mmtool whistle fit [--size N] [--breath 0.8] [--sec 0.5] [--tune ...]\n"
         "                                              grid-search the whistle table (N = 22 is what whistle() assumes)\n"
         "options: --size N  --seed S  --midi M  --sec T  --breath B  --tense T  --no-halfband  --no-wobble\n"
-        "         --tune NAME=VALUE   any field of wp::Tuning, repeatable\n"
+        "         --tune NAME=VALUE   any field of mm::Tuning, repeatable\n"
         "         --png FILE   also write a spectrogram of the render\n");
 }
 

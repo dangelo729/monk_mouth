@@ -1,4 +1,4 @@
-// wind_pipe — wp_jet.h  (whistle plan §3, §4)
+// monk_mouth — mm_jet.h  (whistle plan §3, §4)
 // a jet at the lips. the air in the lip section moves with the cavity's ring;
 // its motion nudges the jet as it leaves, the nudge rides the jet and
 // arrives a transit later as a change in how much air the jet delivers. when
@@ -37,9 +37,9 @@
 
 #include <cstdint>
 
-#include "wp_config.h"
+#include "mm_config.h"
 
-namespace wp {
+namespace mm {
 
 // one tube unit is kWaveUnit of pressure-area. the two conversions multiply
 // to a pure 1/2, so the loop gain does not depend on the calibration.
@@ -140,4 +140,4 @@ private:
     float steady_ = 0.0f, whistle_ = 0.0f, whistleHz_ = 0.0f;
 };
 
-}  // namespace wp
+}  // namespace mm

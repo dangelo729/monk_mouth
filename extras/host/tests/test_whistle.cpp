@@ -1,14 +1,14 @@
-// wind_pipe — tests/test_whistle.cpp  (whistle plan §6, §7.3, stage 3)
+// monk_mouth — tests/test_whistle.cpp  (whistle plan §6, §7.3, stage 3)
 // whistle(midi, breath) through the table: every row locks on its note, a
 // note change slides, and a note outside the range folds into it by octaves.
 #include <cmath>
 #include <vector>
 
-#include "core/wp_voice.h"
-#include "wp_analysis.h"
-#include "wp_test.h"
+#include "core/mm_voice.h"
+#include "mm_analysis.h"
+#include "mm_test.h"
 
-using namespace wp;
+using namespace mm;
 
 namespace {
 
@@ -48,7 +48,7 @@ RowLock whistleRow(int sections, int row) {
 // lock on another mode (row 95); at 26 the bottom rows would whistle under
 // 700 Hz and do not hold their note (row 78 locks 206 cents sharp, row 79
 // barely locks). rows the size puts outside 700 .. 2500 Hz are not asked.
-WP_TEST(voice_whistle_every_table_note_locks) {
+MM_TEST(voice_whistle_every_table_note_locks) {
     const double kSizeTolerance = 180.0;
     const double kReachLo = 700.0, kReachHi = 2500.0;
     for (int row = kWhistleMidiLo; row < kWhistleMidiLo + kWhistleCount; ++row) {
@@ -70,7 +70,7 @@ WP_TEST(voice_whistle_every_table_note_locks) {
 // lock holds through it, and the pitch moves one way. once it lands, a held
 // lock's pitch jitters by a tenth of a hertz: a step back of up to a cent is
 // the lock holding, not the slide turning.
-WP_TEST(voice_whistle_slides) {
+MM_TEST(voice_whistle_slides) {
     const float from = 84.0f, to = 89.0f;
     Voice v(kDefaultSections, 1);
     v.whistle(from, 0.8f);
@@ -105,7 +105,7 @@ WP_TEST(voice_whistle_slides) {
 // a note under the table's range whistles the pose of the same note raised
 // by octaves into it, and one over it the pose lowered into it: the same
 // pose, so the same pitch. the pitch channel keeps the asked note.
-WP_TEST(voice_whistle_folds_octaves) {
+MM_TEST(voice_whistle_folds_octaves) {
     float lo, hi;
     Voice probe;
     probe.whistleRange(lo, hi);
@@ -134,7 +134,7 @@ WP_TEST(voice_whistle_folds_octaves) {
 }
 
 // the table's lookup: rows land exactly, a fraction interpolates, the ends clamp
-WP_TEST(vocab_whistle_pose_interpolates) {
+MM_TEST(vocab_whistle_pose_interpolates) {
     const WhistlePose& r0 = kWhistleTable[0];
     const WhistlePose& rN = kWhistleTable[kWhistleCount - 1];
     const WhistlePose lo = whistlePose((float)kWhistleMidiLo - 5.0f), hi = whistlePose((float)(kWhistleMidiLo + kWhistleCount + 5));
@@ -161,7 +161,7 @@ WP_TEST(vocab_whistle_pose_interpolates) {
 // whistle() ends any words in flight: a line cut off mid-way stops playing
 // at the next block, and its later events — the next onset, the next vowel's
 // pose — never land on the whistle.
-WP_TEST(voice_whistle_ends_words) {
+MM_TEST(voice_whistle_ends_words) {
     const Syllable line[] = {{"S AA", 48.0f, 450}, {"Z UW M", 50.0f, 600}, {"F IY", 55.0f, 500},
                              {"HH OW", 60.0f, 450}, {"W UW", 67.0f, 600}};
     const float note = 86.0f;

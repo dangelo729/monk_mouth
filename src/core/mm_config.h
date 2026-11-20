@@ -1,8 +1,8 @@
-// wind_pipe — wp_config.h
+// monk_mouth — mm_config.h
 // constants, clamp, approach, xorshift32. what is fixed lives here: the
 // engine's shape, the anatomy the vowel table was fitted in, the guards that
 // keep the simulation correct, and the defaults of the live setters. whatever
-// is a matter of who is singing is a tunable, in wp_tuning.h.
+// is a matter of who is singing is a tunable, in mm_tuning.h.
 //
 // src/core/ includes nothing but the C++ standard library.
 #pragma once
@@ -10,7 +10,7 @@
 #include <cmath>
 #include <cstdint>
 
-namespace wp {
+namespace mm {
 
 // ---- engine shape (plan: Decided) ------------------------------------------
 constexpr int   kBlock           = 128;     // control block, samples (2.9 ms)
@@ -25,7 +25,7 @@ constexpr int   kDefaultSections = 22;      // 17.5 cm, adult male
 constexpr int   kMaxNose         = 41;      // round(64 * 28/44)
 
 // ---- the tube (§1) ------------------------------------------------------------
-// the end reflections and the wall damping are tunables (wp_tuning.h).
+// the end reflections and the wall damping are tunables (mm_tuning.h).
 // a section with no area holds no air, but in area-weighted waves whatever was
 // inside when it shut stays trapped between two total reflections and leaks
 // out (doubled) as a 50 ms thump. sections narrower than kNarrowArea lose
@@ -81,7 +81,7 @@ constexpr float kJetSlitCut      = 0.8f;
 constexpr float kJetSlitClear    = 0.93f;
 
 // ---- dynamics (§5): rates per second -------------------------------------------
-// the body's own rates are tunables (wp_tuning.h). these two are the free
+// the body's own rates are tunables (mm_tuning.h). these two are the free
 // constrictions' rates when no consonant brings its own, before the tuning's
 // diction scales them.
 constexpr float kRateSlotClose   = 70.0f;
@@ -135,4 +135,4 @@ struct Rng {
     }
 };
 
-}  // namespace wp
+}  // namespace mm

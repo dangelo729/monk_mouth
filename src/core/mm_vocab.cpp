@@ -1,12 +1,12 @@
-// wind_pipe — wp_vocab.cpp  (plan §8; whistle plan §6)
-#include "wp_vocab.h"
+// monk_mouth — mm_vocab.cpp  (plan §8; whistle plan §6)
+#include "mm_vocab.h"
 
-namespace wp {
+namespace mm {
 
 // ---- vowels -------------------------------------------------------------------------
-// monophthong poses, in raw anatomy units. this block is `wptool fit`'s output,
+// monophthong poses, in raw anatomy units. this block is `mmtool fit`'s output,
 // pasted: re-run the fit after any change to the anatomy or the tube.
-// fitted by `wptool fit` over 7245 tubes, N = 22, orderings enforced with a 5 % margin.
+// fitted by `mmtool fit` over 7245 tubes, N = 22, orderings enforced with a 5 % margin.
 // targets: Peterson & Barney 1952, adult male.   tongueX tongueD lipD       F1 (target)  F2 (target)   residual
 static constexpr VowelPose kAA = {0.308f, 2.412f, 1.500f, 0, 0, 0};   //  713 ( 730)   1079 ( 1090)   -2.3%  -1.0%
 static constexpr VowelPose kAE = {0.273f, 3.500f, 1.500f, 0, 0, 0};   //  639 ( 660)   1638 ( 1720)   -3.2%  -4.8%
@@ -130,9 +130,9 @@ const FormantTarget kFormantTargets[] = {
 const int kFormantTargetCount = (int)(sizeof(kFormantTargets) / sizeof(kFormantTargets[0]));
 
 // ---- the whistle (whistle plan §6) -----------------------------------------------------------
-// one pose per semitone. this block is `wptool whistle fit`'s output, pasted:
+// one pose per semitone. this block is `mmtool whistle fit`'s output, pasted:
 // re-run the fit after any change to the anatomy, the tube or the jet.
-// fitted by `wptool whistle fit`: 57960 poses screened, 57520 rendered, 9483 lock; N = 22, breath 0.80, 0.50 s.
+// fitted by `mmtool whistle fit`: 57960 poses screened, 57520 rendered, 9483 lock; N = 22, breath 0.80, 0.50 s.
 // a lock: periodicity above 0.95 and whistle above 0.5 after 300 ms. every lock also rendered at breath
 // 0.5 and 1.0 and at N = 16 and 26; the cost trades cents, off-mode, held locks and size error against pose jumps.
 // drift: whistleHz from breath 0.5 to 1.0.
@@ -186,4 +186,4 @@ WhistlePose whistlePose(float tableMidi) {
     return p;
 }
 
-}  // namespace wp
+}  // namespace mm

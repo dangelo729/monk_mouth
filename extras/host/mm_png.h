@@ -1,4 +1,4 @@
-// wind_pipe — wp_png.h
+// monk_mouth — mm_png.h
 // a spectrogram as a PNG, with nothing but the standard library: stored
 // (uncompressed) deflate blocks, CRC-32, Adler-32. for eyes, when ears are
 // not to hand. host only.
@@ -8,9 +8,9 @@
 #include <cstdio>
 #include <vector>
 
-#include "wp_analysis.h"
+#include "mm_analysis.h"
 
-namespace wp {
+namespace mm {
 
 inline uint32_t crc32(const uint8_t* p, size_t n, uint32_t crc = 0) {
     static uint32_t table[256];
@@ -122,4 +122,4 @@ inline bool writeSpectrogram(const char* path, const std::vector<float>& x, doub
     return writePng(path, rgb, width, height);
 }
 
-}  // namespace wp
+}  // namespace mm

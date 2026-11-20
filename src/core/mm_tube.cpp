@@ -1,7 +1,7 @@
-// wind_pipe — wp_tube.cpp  (plan §1)
-#include "wp_tube.h"
+// monk_mouth — mm_tube.cpp  (plan §1)
+#include "mm_tube.h"
 
-namespace wp {
+namespace mm {
 
 namespace {
 
@@ -248,4 +248,4 @@ void Halfband::reset() {
     pos_ = 0;
 }
 
-}  // namespace wp
+}  // namespace mm

@@ -1,4 +1,4 @@
-// wind_pipe — wp_tube.h  (plan §1)
+// monk_mouth — mm_tube.h  (plan §1)
 // a Kelly-Lochbaum waveguide ported from Pink Trombone's Tract.runStep:
 // right- and left-going waves, one reflection coefficient per junction, a
 // fixed-shape nose branch joined by a three-port junction at x = 17/44.
@@ -13,10 +13,10 @@
 // more of its end section, a round trip read between samples (End).
 #pragma once
 
-#include "wp_config.h"
-#include "wp_tuning.h"
+#include "mm_config.h"
+#include "mm_tuning.h"
 
-namespace wp {
+namespace mm {
 
 // a length as the tube lays it out. the nose joins at 17/44 of the tract and
 // runs 28/44 of it, rounded to whole sections at whole lengths exactly as a
@@ -231,4 +231,4 @@ private:
     unsigned pos_ = 0;
 };
 
-}  // namespace wp
+}  // namespace mm

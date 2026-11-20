@@ -1,9 +1,9 @@
-// wind_pipe — wp_body.cpp  (plan §4, §5; whistle plan §2)
-#include "wp_body.h"
+// monk_mouth — mm_body.cpp  (plan §4, §5; whistle plan §2)
+#include "mm_body.h"
 
-#include "wp_noise.h"
+#include "mm_noise.h"
 
-namespace wp {
+namespace mm {
 
 // ============================================================================
 // anatomy
@@ -435,4 +435,4 @@ void Body::tick(Tube& tube) {
     }
 }
 
-}  // namespace wp
+}  // namespace mm

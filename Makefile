@@ -1,4 +1,4 @@
-# wind_pipe — Makefile
+# monk_mouth — Makefile
 # a doorway: the host rig lives in extras/host, and this forwards to it so
 # `make test`, `make tool` and `make corpus` work from the repository root.
 # (the Arduino build ignores this file.)

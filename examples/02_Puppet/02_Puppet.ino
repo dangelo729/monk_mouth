@@ -1,5 +1,5 @@
 // ----------------------------------------------------------------------------
-// wind_pipe example 02 — Puppet
+// monk_mouth example 02 — Puppet
 //
 // serial commands -> targets: play the body by hand, and babble.
 // (Teensy 4.1 + the SGTL5000 audio shield; serial monitor at any baud, line
@@ -47,9 +47,9 @@
 // ----------------------------------------------------------------------------
 
 #include <Audio.h>
-#include <WindPipe.h>
+#include <MonkMouth.h>
 
-AudioSynthWindPipe   voice;
+AudioSynthMonkMouth   voice;
 AudioMixer4          mixer;
 AudioOutputI2S       i2s;
 AudioConnection      patchCord1(voice, 0, mixer, 0);
@@ -88,7 +88,7 @@ void printHelp() {
 }
 
 void printState() {
-    const wp::BodyState s = voice.state();
+    const mm::BodyState s = voice.state();
     Serial.print(F("breath "));   Serial.print(s.breath, 2);
     Serial.print(F("  glottis ")); Serial.print(s.glottis, 2);
     Serial.print(F("  tense "));   Serial.print(s.tenseness, 2);
@@ -107,13 +107,13 @@ void printState() {
     Serial.print(F("  pressure ")); Serial.print(s.pressure, 2);
     if (s.closed) Serial.print(F("  CLOSED"));
     if (s.busy)   Serial.print(F("  busy"));
-    if (s.phoneme) { Serial.print(F("  /")); Serial.print(wp::phoneName(s.phoneme)); Serial.print('/'); }
+    if (s.phoneme) { Serial.print(F("  /")); Serial.print(mm::phoneName(s.phoneme)); Serial.print('/'); }
     Serial.println();
 }
 
 void printDiameters() {
-    float d[wp::kMaxSections];
-    const int n = voice.diameters(d, wp::kMaxSections);
+    float d[mm::kMaxSections];
+    const int n = voice.diameters(d, mm::kMaxSections);
     for (int i = 0; i < n; ++i) { Serial.print(d[i], 2); Serial.print(' '); }
     Serial.println();
 }
@@ -168,7 +168,7 @@ void setup() {
     mixer.gain(0, 0.8f);
 
     while (!Serial && millis() < 3000) {}
-    Serial.println(F("wind_pipe puppet — h for help"));
+    Serial.println(F("monk_mouth puppet — h for help"));
 }
 
 void loop() {

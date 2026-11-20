@@ -1,4 +1,4 @@
-// wind_pipe — wp_voice.h  (plan §7; whistle plan §3, §4, §6)
+// monk_mouth — mm_voice.h  (plan §7; whistle plan §3, §4, §6)
 // the voice: the whole public surface. you move a mouth; the sound is the
 // consequence.
 //
@@ -23,7 +23,7 @@
 // wins, even when all of it lands in a single block.)
 //
 // whistle(midi, breath) is a convenience like noteOn: one call that writes a
-// whistle pose from the table (wp_vocab.h) through the same targets — folds
+// whistle pose from the table (mm_vocab.h) through the same targets — folds
 // open, velum shut, tongue, pucker, a slot or none, breath — so the last
 // writer wins here too. a note outside the table's range folds into it by
 // octaves; a voice of another size looks its note up shifted by its size.
@@ -31,11 +31,11 @@
 // stop() or setGlottis(0) voices again. words and whistles are exclusive:
 // whistle() ends any words in flight.
 //
-// the tuning (wp_tuning.h) — who is singing — goes the same way, whole: set
+// the tuning (mm_tuning.h) — who is singing — goes the same way, whole: set
 // between blocks, it lands at the top of the next one, ahead of that block's
 // targets, so a setTuning and a noteOn in one frame aim at the new rates.
 // so does the size (setSections), after the tuning: any number of sections,
-// not only a whole one (wp_tube.h's Layout). the pose stands, the pipe takes
+// not only a whole one (mm_tube.h's Layout). the pose stands, the pipe takes
 // the new length under whatever is sounding, and every formant moves with
 // the ratio of the lengths — a size moved a little at a time glides. a
 // whistle() looks its note up at the size last asked for.
@@ -45,18 +45,18 @@
 // own mutex.
 #pragma once
 
-#include "wp_body.h"
-#include "wp_config.h"
-#include "wp_glottis.h"
-#include "wp_jet.h"
-#include "wp_noise.h"
-#include "wp_pitch.h"
-#include "wp_score.h"
-#include "wp_tube.h"
-#include "wp_tuning.h"
-#include "wp_vocab.h"
+#include "mm_body.h"
+#include "mm_config.h"
+#include "mm_glottis.h"
+#include "mm_jet.h"
+#include "mm_noise.h"
+#include "mm_pitch.h"
+#include "mm_score.h"
+#include "mm_tube.h"
+#include "mm_tuning.h"
+#include "mm_vocab.h"
 
-namespace wp {
+namespace mm {
 
 // the eased body, as of the end of the last block. API units throughout.
 struct BodyState {
@@ -195,4 +195,4 @@ private:
     float stateDiameters_[kMaxSections];
 };
 
-}  // namespace wp
+}  // namespace mm
