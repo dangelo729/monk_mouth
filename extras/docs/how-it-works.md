@@ -2,7 +2,7 @@
 
 The sound is air moving through a tube shaped like a vocal tract: a
 Kelly-Lochbaum waveguide with a nose branch, driven by a Liljencrants-Fant
-glottal pulse, both ported from Pink Trombone. Nothing is told what a sound
+glottal pulse, both adapted from Pink Trombone. Nothing is told what a sound
 is. A small body (lungs, larynx, tongue, lips, velum and two free
 constrictions) moves toward its targets, and vowels, glides, nasals, stops,
 bursts and hiss come out of where the tube is wide, narrow, closed or opening.

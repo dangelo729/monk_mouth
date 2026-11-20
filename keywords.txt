@@ -51,6 +51,7 @@ busy	KEYWORD2
 state	KEYWORD2
 diameters	KEYWORD2
 sections	KEYWORD2
+setSections	KEYWORD2
 setHalfband	KEYWORD2
 render	KEYWORD2
 latch	KEYWORD2

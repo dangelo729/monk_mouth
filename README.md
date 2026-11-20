@@ -86,7 +86,13 @@ and measures the voice: `mmtool say "HH AH0 L OW1" -o hello.wav`.
 
 ## Credits and license
 
-The tube and the glottis are a float32 C++ port of
-[Pink Trombone](https://dood.al/pinktrombone/) by Neil Thapen (2017, MIT),
-kept verbatim at `extras/reference/pinktrombone.html`. Vowel targets are from
-Peterson & Barney (1952). `NOTICE` names every source. MIT, see `LICENSE`.
+A lot of the core of this library was inspired by and adapted from
+[Pink Trombone](https://dood.al/pinktrombone/), an awesome website that I've
+liked since I was a kid.
+
+Pink Trombone is copyright 2017 Neil Thapen, under the MIT license. Its file is
+kept as it was at `extras/reference/pinktrombone.html`, and `NOTICE` carries its
+license and lists what came from it. Vowel targets are from Peterson & Barney
+(1952).
+
+This library is MIT, see `LICENSE`.

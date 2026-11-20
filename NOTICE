@@ -4,15 +4,15 @@ Third-party attributions and data provenance.
 monk_mouth itself is licensed under the MIT License (see LICENSE).
 
 --------------------------------------------------------------------------
-1. Pink Trombone (port basis)
+1. Pink Trombone (the source of the tube, the glottis and the anatomy)
 --------------------------------------------------------------------------
-The tube and the glottis of monk_mouth are a float32 C++ port of Pink
+monk_mouth's tube, its glottis and its anatomy are adapted from Pink
 Trombone, "bare-handed procedural speech synthesis", version 1.1, March 2017,
-by Neil Thapen:
+by Neil Thapen, rewritten in float32 C++ and changed as noted below:
 
     https://dood.al/pinktrombone/
 
-What is ported:
+What comes from it:
 
   - the tube (src/core/mm_tube.*): the Kelly-Lochbaum waveguide of
     Tract.runStep — junction scattering, the glottal and lip reflections,
@@ -32,11 +32,11 @@ What is ported:
     of TractUI.drawPositions.
 
 Everything else — the body's dynamics, the pitch axis, the vocabulary's
-tuning, the score compiler and player, the Teensy wrapper — is not from
-Pink Trombone, and nothing is ported from anywhere else.
+tuning, the score compiler and player, the whistle, the Teensy wrapper — is
+not from Pink Trombone, and nothing is ported from anywhere else.
 
-Pink Trombone's single HTML file is vendored VERBATIM, with its license, at
-extras/reference/pinktrombone.html, and is the port bible: every Pink
+Pink Trombone's single HTML file is kept verbatim, with its license, at
+extras/reference/pinktrombone.html, and is the reference: every Pink
 Trombone constant in the source was read from it. Its license notice is
 reproduced in full below, as required:
 
