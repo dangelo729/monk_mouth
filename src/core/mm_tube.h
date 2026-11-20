@@ -1,4 +1,4 @@
-// monk_mouth — mm_tube.h  (plan §1)
+// monk_mouth — mm_tube.h
 // a Kelly-Lochbaum waveguide ported from Pink Trombone's Tract.runStep:
 // right- and left-going waves, one reflection coefficient per junction, a
 // fixed-shape nose branch joined by a three-port junction at x = 17/44.
@@ -19,10 +19,10 @@
 namespace mm {
 
 // a length as the tube lays it out. the nose joins at 17/44 of the tract and
-// runs 28/44 of it, rounded to whole sections at whole lengths exactly as a
-// tube built at one always has, and sliding from one whole length's to the
-// next's in between — so every part of the tube moves continuously with the
-// length, and a whole length lays out as it always did.
+// runs 28/44 of it, rounded to whole sections at a whole length, and sliding
+// from one whole length's to the next's in between — so every part of the
+// tube moves continuously with the length, and a whole length lays out the
+// same whether the tube was built at it or resized to it.
 struct Layout {
     float length = 0.0f;                        // sections, glottis to lips
     int   n = 0;                                // whole sections in the tract
@@ -128,9 +128,8 @@ public:
 
     // half into R and minus half into L of one section: adds through-flow
     // (R - L) and leaves the pressure (R + L). that is the wave pair a pressure
-    // difference across the section makes: the jet drive's dipole (whistle
-    // plan §3). inject() is the monopole, a volume source, which the open end
-    // shorts.
+    // difference across the section makes: the jet drive's dipole. inject()
+    // is the monopole, a volume source, which the open end shorts.
     inline void injectFlow(int section, float amount) {
         R_[section] += 0.5f * amount;
         L_[section] -= 0.5f * amount;

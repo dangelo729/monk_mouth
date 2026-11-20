@@ -1,9 +1,9 @@
-// monk_mouth — tests/test_jet.cpp  (whistle plan §7.3, stage 1)
+// monk_mouth — tests/test_jet.cpp
 // the jet at the lips: the airflow the body hands it, a bounded loop, silent
 // under a voice, and a whistle at a pose — which needs breath, rises with it,
 // dies through the nose and stops with the note.
 //
-// the hand-found pose (whistle plan §10, stage 2): folds open, velum shut,
+// the hand-found pose: folds open, velum shut,
 // tongue at 0.9 forward and 0.6 high, lips at 0.3, no slot. at the default
 // tuning and N = 22 its lip mode is 1222 Hz; it does not lock at a breath of
 // 0.2, locks weakly at 0.28 (whistle 0.43) and fully from 0.3 (1186 Hz),
@@ -63,7 +63,7 @@ struct Rig {
     }
 };
 
-// §2's formulas, from the body's own diameters and glottis
+// the airflow's formulas, from the body's own diameters and glottis
 void expectedAirflow(const Body& b, const Tuning& t, float& flow, float& delay, float& halfWidth, float& lipArea) {
     const int n = b.sections();
     const float* d = b.diameters();
@@ -100,7 +100,7 @@ bool near(float a, float b, float rel) { return std::fabs(a - b) <= rel * std::f
 
 }  // namespace
 
-// the block-rate numbers are §2's: bernoulli through three orifices in series,
+// the block-rate numbers: bernoulli through three orifices in series,
 // the transit clamped, the areas floored. a closure anywhere zeroes the flow,
 // and the nose takes its share. the jet carries only what is steady: nothing
 // while the folds pulse, nothing through a slot cut into the lips below the pucker.
@@ -131,7 +131,7 @@ MM_TEST(jet_airflow_follows_the_pose) {
         }
     }
 
-    // the numbers of §2: a kilopascal, lips at 0.3 (d = 0.3 cm), nothing else narrow
+    // a kilopascal, lips at 0.3 (d = 0.3 cm), nothing else narrow
     {   Tuning t;
         t.breathPressure = 1000.0f;
         Rig r(t);
@@ -308,7 +308,7 @@ MM_TEST(voice_whistles_at_a_pose) {
     for (int n : kSizes) {
         // a 26's lip mode is lower and the jet's transit does not scale with
         // size: at 0.8 the jet pulls its pitch 8 % sharp of the mode (1065 Hz
-        // against 987), at 0.5 it sits 3 % sharp. measured, whistle plan §6.
+        // against 987), at 0.5 it sits 3 % sharp. measured.
         const float breath = n == 26 ? 0.5f : 0.8f;
         Voice v(n, 1);
         posePucker(v, breath);

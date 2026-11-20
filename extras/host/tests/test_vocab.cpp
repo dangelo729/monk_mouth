@@ -1,4 +1,4 @@
-// monk_mouth — tests/test_vocab.cpp  (plan: Tests / Vocabulary)
+// monk_mouth — tests/test_vocab.cpp
 #include <cstring>
 #include <string>
 #include <vector>

@@ -1,4 +1,4 @@
-// monk_mouth — tests/test_tube.cpp  (plan: Tests / Tube)
+// monk_mouth — tests/test_tube.cpp
 #include <cmath>
 #include <vector>
 
@@ -44,8 +44,8 @@ MM_TEST(tube_uniform_resonances_between_whole_lengths) {
     }
 }
 
-// a whole length lays out as a tube built at it always has: every section
-// whole, the nose joined and as long as the reference's ratios round to.
+// a whole length lays out whole: every section whole, the nose joined and
+// as long as the reference's ratios round to.
 MM_TEST(tube_whole_lengths_lay_out_as_ever) {
     for (int n = kMinSections; n <= kMaxSections; ++n) {
         const Layout at = layoutFor((float)n);
@@ -93,7 +93,7 @@ static double drivenRms(int n, const float* d, float velum) {
 }
 
 // the engine's own signal path: glottal pulse -> tube -> halfband.
-// (a closed section, clamped at k = +-0.999, is a two-sample resonator that
+// (a closed section, clamped at |k| = 0.999999, is a two-sample resonator that
 // leaks at exactly DC and Fs/2; the pulse has no DC and the halfband has no
 // Fs/2, so white noise is the wrong probe for a closure.)
 static double voicedRms(int n, const float* d, float velum) {
@@ -111,7 +111,7 @@ static double voicedRms(int n, const float* d, float velum) {
 
 // a closed section drops the output > 50 dB. sealed velum: this is the tube's
 // own closure. with the reference's "shut" velum of 0.01 the nose leaks a
-// little, and the floor is the stop spec's 40 dB instead.
+// little, and the floor is 40 dB instead.
 MM_TEST(tube_closure_drops_output) {
     for (int n : {16, 22, 26}) {
         for (int where : {n / 2, n * 3 / 4, n - 1}) {

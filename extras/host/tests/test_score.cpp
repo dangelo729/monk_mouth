@@ -1,4 +1,4 @@
-// monk_mouth — tests/test_score.cpp  (plan: Tests / Score)
+// monk_mouth — tests/test_score.cpp
 #include <cstring>
 #include <string>
 #include <vector>

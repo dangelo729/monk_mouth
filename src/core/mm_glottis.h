@@ -1,4 +1,4 @@
-// monk_mouth — mm_glottis.h  (plan §2)
+// monk_mouth — mm_glottis.h
 // the Liljencrants-Fant pulse with one knob, ported from Pink Trombone's
 // Glottis.setupWaveform. the reference evaluates exp and sin per sample; here
 // the same waveform runs as recurrences reseeded from the closed form every

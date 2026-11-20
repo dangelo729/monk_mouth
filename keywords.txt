@@ -29,6 +29,7 @@ setGlottis	KEYWORD2
 setTenseness	KEYWORD2
 setTongue	KEYWORD2
 setLips	KEYWORD2
+setVowel	KEYWORD2
 setVelum	KEYWORD2
 setConstriction	KEYWORD2
 clearConstriction	KEYWORD2

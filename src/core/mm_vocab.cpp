@@ -1,4 +1,4 @@
-// monk_mouth — mm_vocab.cpp  (plan §8; whistle plan §6)
+// monk_mouth — mm_vocab.cpp
 #include "mm_vocab.h"
 
 namespace mm {
@@ -129,7 +129,7 @@ const FormantTarget kFormantTargets[] = {
 };
 const int kFormantTargetCount = (int)(sizeof(kFormantTargets) / sizeof(kFormantTargets[0]));
 
-// ---- the whistle (whistle plan §6) -----------------------------------------------------------
+// ---- the whistle -----------------------------------------------------------------------------
 // one pose per semitone. this block is `mmtool whistle fit`'s output, pasted:
 // re-run the fit after any change to the anatomy, the tube or the jet.
 // fitted by `mmtool whistle fit`: 57960 poses screened, 57520 rendered, 9483 lock; N = 22, breath 0.80, 0.50 s.

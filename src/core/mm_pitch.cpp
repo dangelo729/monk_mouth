@@ -1,4 +1,4 @@
-// monk_mouth — mm_pitch.cpp  (plan §6)
+// monk_mouth — mm_pitch.cpp
 #include "mm_pitch.h"
 
 namespace mm {

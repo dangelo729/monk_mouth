@@ -1,9 +1,9 @@
-// monk_mouth — mm_vocab.h  (plan §8; whistle plan §6)
+// monk_mouth — mm_vocab.h
 // the data: two small tables covering all 39 ARPABET phonemes. vowels are
 // poses (tongue + lips, optionally a second pose for a diphthong); consonants
-// are a kind, a place, a degree and their timing. everything here is tuned,
-// first by `mmtool fit`, then by ear. beside them, the whistle's vocabulary:
-// one pose per semitone, fitted by `mmtool whistle fit`.
+// are a kind, a place, a degree and their timing. the vowel poses are fitted
+// by `mmtool fit`, the consonants set by hand. beside them, the whistle's
+// vocabulary: one pose per semitone, fitted by `mmtool whistle fit`.
 #pragma once
 
 #include "mm_config.h"
@@ -61,7 +61,7 @@ struct FormantTarget { uint8_t phone; float f1, f2, f3; bool rounded; };
 extern const FormantTarget kFormantTargets[];
 extern const int kFormantTargetCount;
 
-// ---- the whistle (whistle plan §6) ---------------------------------------------------------
+// ---- the whistle ---------------------------------------------------------------------------
 // a whistled note is a pose: folds open, velum shut, the tongue, a pucker and
 // an optional slot behind it. raw anatomy units; slotPlace < 0: no slot.
 struct WhistlePose { float tongueX, tongueD, lipD, slotPlace, slotDegree; };

@@ -1,4 +1,4 @@
-// monk_mouth — mm_body.cpp  (plan §4, §5; whistle plan §2)
+// monk_mouth — mm_body.cpp
 #include "mm_body.h"
 
 #include "mm_noise.h"
@@ -53,7 +53,6 @@ void shapeTract(const Pose& pose, float length, float* d, int* slotEnd, float* s
 
 void shapeTract(const Pose& pose, const Layout& at, float* d, int* slotEnd, float* slotBaseMax, const Tuning& tuning,
                 float* ends) {
-    const float pi = 3.14159265358979f;
     const float fixedTongue = 2.0f + (pose.tongueD - 2.0f) / 1.5f;
     const float lipD = clampf(pose.lipD, 0.0f, kLipDMax);
     const int n = at.n;
@@ -70,7 +69,7 @@ void shapeTract(const Pose& pose, const Layout& at, float* d, int* slotEnd, floa
         float di = blend(blend(tuning.throatD, tuning.throatUpperD, past(c, length, 6)), 1.5f, past(c, length, 12));
         const float tongue = past(c, length, 10) * (1.0f - past(c, length, 38));
         if (tongue > 0.0f) {
-            const float t = 1.1f * pi * (pose.tongueX - x) / 0.5f;
+            const float t = 1.1f * kPi * (pose.tongueX - x) / 0.5f;
             const float curve = (3.2f - fixedTongue) * std::cos(t) * tongueSoften(x);
             di = blend(di, 1.5f - curve, tongue);
         }
@@ -95,7 +94,7 @@ void shapeTract(const Pose& pose, const Layout& at, float* d, int* slotEnd, floa
             if (rel > width) continue;
             if (section && slotBaseMax && di > slotBaseMax[j]) slotBaseMax[j] = di;
             if (degree >= di) continue;
-            const float shrink = rel <= 0.0f ? 0.0f : 0.5f * (1.0f - std::cos(pi * rel / width));
+            const float shrink = rel <= 0.0f ? 0.0f : 0.5f * (1.0f - std::cos(kPi * rel / width));
             di = degree + (di - degree) * shrink;
             if (section && slotEnd) slotEnd[j] = i;               // walking toward the lips: the last one wins
         }
@@ -380,7 +379,7 @@ void Body::tick(Tube& tube) {
     frame_.voicedness = tense * breath_.x * shut;
     frame_.aspiration = breath_.x * lerpf(1.0f - std::sqrt(tense), 1.0f, glottisOpen) * t_.aspirationGain;
 
-    // ---- the airflow (whistle plan §2) ---------------------------------------------------
+    // ---- the airflow ---------------------------------------------------------------------
     // bernoulli through three orifices in series: the folds, the narrowest place
     // between them and the lips, and the lips. voiced, the folds are narrowest and
     // the jet is slow; folds open and lips puckered, the pressure drops at the lips
@@ -420,10 +419,10 @@ void Body::tick(Tube& tube) {
         // folds have stopped (the voicing gate's complement). and the jet's
         // orifice is the pucker, the lips channel itself: a slot cut deeper than
         // the pucker inside the lip sections is a slit against the teeth (F, TH,
-        // S through its taper), and a slit breaks the jet. measured: without the
-        // first a sung UW's jet, saturated by the voice itself, was 17 dB under
-        // the vowel; without the second an F or a TH carried a wandering tone
-        // 16 to 22 dB under its hiss. the orifice's area stays the lip minimum.
+        // S through its taper), and a slit breaks the jet. measured: ungated by
+        // the folds, a sung UW's jet, saturated by the voice itself, sits 17 dB
+        // under the vowel; ungated by the slit, an F or a TH carries a wandering
+        // tone 16 to 22 dB under its hiss. the orifice's area stays the lip minimum.
         const float lipD = std::sqrt(lip);
         const float pucker = clampf(pose_.lipD, 0.0f, kLipDMax);
         const float slit = pucker > 0.0f ? lipD / pucker : 0.0f;

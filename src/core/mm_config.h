@@ -12,7 +12,7 @@
 
 namespace mm {
 
-// ---- engine shape (plan: Decided) ------------------------------------------
+// ---- engine shape ----------------------------------------------------------
 constexpr int   kBlock           = 128;     // control block, samples (2.9 ms)
 constexpr float kInvBlock        = 1.0f / 128.0f;
 constexpr float kDefaultFs       = 44100.0f;
@@ -24,7 +24,7 @@ constexpr int   kMaxSections     = 64;      // 50.8 cm
 constexpr int   kDefaultSections = 22;      // 17.5 cm, adult male
 constexpr int   kMaxNose         = 41;      // round(64 * 28/44)
 
-// ---- the tube (§1) ------------------------------------------------------------
+// ---- the tube -----------------------------------------------------------------
 // the end reflections and the wall damping are tunables (mm_tuning.h).
 // a section with no area holds no air, but in area-weighted waves whatever was
 // inside when it shut stays trapped between two total reflections and leaks
@@ -33,15 +33,15 @@ constexpr int   kMaxNose         = 41;      // round(64 * 28/44)
 // ghost drains in ~10 ms.
 constexpr float kDampClosed        = 0.98f;
 constexpr float kNarrowArea        = 0.01f;    // d = 0.1: below every fricative
-// the plan's 0.999 is a slit of diameter 0.034, and one section of slit passes
-// the voice's low harmonics at -24 dB: not a closure. 1 - 1e-6 is; the area
-// floor already keeps the junction's division safe.
+// a reflection held to 0.999 is a slit of diameter 0.034, and one section of
+// slit passes the voice's low harmonics at -24 dB: not a closure. 1 - 1e-6
+// is; the area floor keeps the junction's division safe.
 constexpr float kMaxReflection     = 0.999999f;
 constexpr float kMinArea           = 1e-6f;
 constexpr float kOutputGain        = 0.25f;    // tube output -> [-1, 1]
-constexpr float kSilenceEnergy     = 1e-9f;    // the silence gate (§5)
+constexpr float kSilenceEnergy     = 1e-9f;    // the silence gate
 
-// ---- anatomy (§4): the reference's landmarks, as fractions of tract length --
+// ---- anatomy: the reference's landmarks, as fractions of tract length -------
 constexpr float kTongueXMin = 12.0f / 44.0f;   // 0.273
 constexpr float kTongueXMax = 29.0f / 44.0f;   // 0.659
 constexpr float kTongueDMin = 2.05f;           // the tongue at its highest
@@ -59,7 +59,7 @@ constexpr float kClosureAim = -0.3f;           // closures aim below zero
 constexpr float kBreathAim  = -0.05f;          // so does a breath of 0
 constexpr float kSlotClearMargin = 0.5f;       // clear aims this far above the base shape
 
-// ---- the whistle (whistle plan §2, §3, §5): a jet at the lips -------------------
+// ---- the whistle: a jet at the lips ---------------------------------------------
 // the airflow is physical, so these are the physics' numbers, not choices.
 constexpr float kAirDensity      = 1.2f;       // kg/m³: air
 constexpr float kSoundSpeed      = 350.0f;     // m/s: the tube's own, 0.794 cm sections at 44.1 kHz
@@ -80,7 +80,7 @@ constexpr float kDiameterCm      = 1.0f;       // one diameter unit is one centi
 constexpr float kJetSlitCut      = 0.8f;
 constexpr float kJetSlitClear    = 0.93f;
 
-// ---- dynamics (§5): rates per second -------------------------------------------
+// ---- dynamics: rates per second ------------------------------------------------
 // the body's own rates are tunables (mm_tuning.h). these two are the free
 // constrictions' rates when no consonant brings its own, before the tuning's
 // diction scales them.
@@ -93,7 +93,7 @@ constexpr float kPressureRateVoiced    = 20.0f;
 constexpr float kPressureRateVoiceless = 80.0f;
 constexpr float kPressureRateFall      = 100.0f;
 
-// ---- pitch (§6) -----------------------------------------------------------------
+// ---- pitch ----------------------------------------------------------------------
 constexpr float kDefaultGlide     = 30.0f;  // per second, in log frequency
 constexpr float kDefaultVibRate   = 5.5f;   // Hz
 constexpr float kDefaultVibCents  = 25.0f;
@@ -107,6 +107,8 @@ constexpr float kDefaultMidi      = 48.0f;
 constexpr float kScoreBreath      = 0.8f;   // sing()/say() level when none was ever set
 
 // ---- helpers ------------------------------------------------------------------------
+constexpr float kPi = 3.14159265358979f;
+
 inline float clampf(float x, float lo, float hi) { return x < lo ? lo : (x > hi ? hi : x); }
 inline float lerpf(float a, float b, float t) { return a + (b - a) * t; }
 inline float smoothstep01(float x) {

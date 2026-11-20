@@ -1,4 +1,4 @@
-// monk_mouth — tests/test_body.cpp  (plan: Tests / Body)
+// monk_mouth — tests/test_body.cpp
 #include <cmath>
 #include <vector>
 

@@ -1,4 +1,4 @@
-// monk_mouth — mm_body.h  (plan §4, §5; whistle plan §2)
+// monk_mouth — mm_body.h
 // the body: a pose eased toward its targets, turned into diameters once per
 // block, and watched for the three things a tube cannot know about itself —
 // where it hisses, when a closure lets go, and how hard.
@@ -13,7 +13,7 @@
 
 namespace mm {
 
-// ---- anatomy (§4): a pure function of the pose -----------------------------------
+// ---- anatomy: a pure function of the pose ----------------------------------------
 // raw anatomy units: tongueX in [kTongueXMin, kTongueXMax], tongueD in
 // [kTongueDMin, kTongueDMax], lipD in [0, 1.5], positions as fractions of tract
 // length (glottis 0, lips 1). evaluated at section centres, so a pose means the
@@ -48,7 +48,7 @@ void shapeTract(const Pose& pose, float length, float* diameters,
 // result is not held: past the lips' range is the body's to hold.
 float vowelLips(float lipD, float lipRound);
 
-// ---- dynamics (§5) ------------------------------------------------------------------
+// ---- dynamics -----------------------------------------------------------------------
 struct Channel {
     float x = 0.0f, target = 0.0f;
     float coefUp = 1.0f, coefDown = 1.0f;          // in force
@@ -85,7 +85,7 @@ struct BodyFrame {
     float turb[3] = {0, 0, 0};   // turbulence gain: slot 0, slot 1, lips
     int   turbIdx[3] = {1, 1, 1};
     float turbFrac[3] = {0, 0, 0};
-    // the airflow through the lips (whistle plan §2), si units
+    // the airflow through the lips, si units
     float jetFlow = 0.0f;        // m³/s: what the jet carries, after the nose's share
     float jetDelay = 1.0f;       // samples: a nudge's transit along the jet
     float jetHalfWidth = 0.0f;   // m: half the lip orifice

@@ -1,4 +1,4 @@
-// monk_mouth — mm_glottis.cpp  (plan §2)
+// monk_mouth — mm_glottis.cpp
 #include "mm_glottis.h"
 
 namespace mm {
@@ -27,10 +27,9 @@ LfShape lfSetup(float tenseness) {
     const float totalLowerIntegral = -(Te - Tp) / 2.0f + RHSIntegral;
     const float totalUpperIntegral = -totalLowerIntegral;
 
-    const float pi = 3.14159265358979f;
-    const float omega = pi / Tp;
+    const float omega = kPi / Tp;
     const float s = std::sin(omega * Te);
-    const float y = -pi * s * totalUpperIntegral / (Tp * 2.0f);
+    const float y = -kPi * s * totalUpperIntegral / (Tp * 2.0f);
     const float z = std::log(y);
     const float alpha = z / (Tp / 2.0f - Te);
     const float E0 = -1.0f / (s * std::exp(alpha * Te));

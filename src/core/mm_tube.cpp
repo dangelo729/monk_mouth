@@ -1,4 +1,4 @@
-// monk_mouth — mm_tube.cpp  (plan §1)
+// monk_mouth — mm_tube.cpp
 #include "mm_tube.h"
 
 namespace mm {
@@ -230,12 +230,11 @@ float Tube::energy() const {
 Halfband::Halfband() {
     // windowed-sinc halfband: even taps are zero, the centre is 0.5, and the
     // odd taps on each side sum to 0.25 so DC gain is exactly 1.
-    const float pi = 3.14159265358979f;
     float sum = 0.0f;
     for (int j = 0; j < 4; ++j) {
         const int k = 2 * j + 1;
-        const float sinc = ((j & 1) ? -1.0f : 1.0f) / (pi * (float)k);
-        const float window = 0.54f + 0.46f * std::cos(pi * (float)k / 7.0f);
+        const float sinc = ((j & 1) ? -1.0f : 1.0f) / (kPi * (float)k);
+        const float window = 0.54f + 0.46f * std::cos(kPi * (float)k / 7.0f);
         h_[j] = sinc * window;
         sum += h_[j];
     }

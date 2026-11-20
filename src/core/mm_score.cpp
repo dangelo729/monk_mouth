@@ -1,4 +1,4 @@
-// monk_mouth — mm_score.cpp  (plan §9)
+// monk_mouth — mm_score.cpp
 #include "mm_score.h"
 
 #include <cstring>

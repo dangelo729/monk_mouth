@@ -1,4 +1,4 @@
-// monk_mouth — mm_voice.cpp  (plan §7; whistle plan §3, §4, §6)
+// monk_mouth — mm_voice.cpp
 #include "mm_voice.h"
 
 namespace mm {
@@ -43,6 +43,15 @@ void Voice::setTongue(float pos01, float height01) {
                      lerpf(kTongueDMax, kTongueDMin, clampf(height01, 0.0f, 1.0f)));
 }
 void Voice::setLips(float aperture01)       { write(kChLips, kLipDMax * clampf(aperture01, 0.0f, 1.0f)); }
+// the table's pose in its own units, the lips as a sung vowel's: the tuning's
+// lipRound reshapes them. a diphthong poses its first half; a phone that is
+// not a vowel sets nothing.
+void Voice::setVowel(uint8_t phone) {
+    if (!isVowel(phone)) return;
+    const VowelPose& v = vowel(phone);
+    write(kChTongue, v.tongueX, v.tongueD);
+    write(kChLips, v.lipD, kLipsVowel);
+}
 void Voice::setVelum(float open01)          { write(kChVelum, open01); }
 void Voice::setConstriction(int slot, float place01, float degree) {
     if (slot < 0 || slot > 1) return;
@@ -77,7 +86,7 @@ void Voice::noteOn(float midi, float vel01) {
 }
 void Voice::noteOff() { write(kChBreath, 0.0f); }
 
-// the table's note for this one (whistle plan §6): shifted by the voice's
+// the table's note for this one: shifted by the voice's
 // size, folded into the table's range by octaves, then clamped. the pitch
 // channel keeps the asked note; the folds open, the velum shuts. whistle()
 // ends any words in flight: a commit not yet taken is dropped, and a score

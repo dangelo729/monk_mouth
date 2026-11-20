@@ -1,7 +1,7 @@
 // monk_mouth — mm_analysis.h
 // the host's measuring instruments: a radix-2 FFT, a formant picker that
 // feeds a unit impulse through a static tube, and a few spectrum helpers.
-// no source, no noise, no external analysis tools (plan §11). host only.
+// no source, no noise, no external analysis tools. host only.
 #pragma once
 
 #include <cmath>
@@ -93,7 +93,7 @@ inline std::vector<double> formants(float sections, const float* diameters, floa
     return spectralPeaks(mag, fs, 120.0, hiHz);
 }
 
-// the resonances the jet sees (whistle plan §7.1): a unit impulse injected
+// the resonances the jet sees: a unit impulse injected
 // into the last section, the tube's output read there. the driving point at
 // the lips, where peak-picking the throat-end response finds every formant.
 inline std::vector<float> lipImpulseResponse(float sections, const float* diameters, float velumDiameter, int count,

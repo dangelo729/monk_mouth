@@ -1,4 +1,4 @@
-// monk_mouth — mm_jet.h  (whistle plan §3, §4)
+// monk_mouth — mm_jet.h
 // a jet at the lips. the air in the lip section moves with the cavity's ring;
 // its motion nudges the jet as it leaves, the nudge rides the jet and
 // arrives a transit later as a change in how much air the jet delivers. when
@@ -13,22 +13,23 @@
 //   drive = -0.5 Uj tanh~(eta / halfW)         m³/s  the flow the jet adds; odd, so zero-mean
 //   out   = drive * kFlowToWave                      across the last section, as a dipole (Tube::injectFlow)
 //
-// four departures from the plan's §3, all measured (whistle plan §11, phase
-// geometry): the jet is nudged by the air's velocity, not its displacement —
-// the displacement's 1/f tilt made every pose lock at 80 .. 200 Hz, far under
-// its lip mode; the drive enters as a pressure difference across the lip
-// section, which the tube carries as flow (plus half into R, minus half into
-// L), not as a volume source (half and half) — the open end's radiation shorts
-// a volume source and it barely rings the front cavity; the drive opposes the nudge,
-// which locks on the lip mode at three times as many poses as the other
-// sign; and the nudge is lowpassed, the loop filter of cook's flute — without
-// it the lip channel's own half-wave mode (7 .. 9 kHz) locks under the lip
-// mode's threshold, and a labiodental F or TH whistles there.
+// four choices, each measured:
+//   - the nudge is the air's velocity, not its displacement, whose 1/f tilt
+//     would lock every pose at 80 .. 200 Hz, far under its lip mode.
+//   - the drive enters as a pressure difference across the lip section, which
+//     the tube carries as flow (plus half into R, minus half into L), not as
+//     a volume source (half and half): the open end's radiation shorts a
+//     volume source, which barely rings the front cavity.
+//   - the drive opposes the nudge: that sign locks on the lip mode at three
+//     times as many poses as the other.
+//   - the nudge is lowpassed, the loop filter of cook's flute, so the lip
+//     channel's own half-wave mode (7 .. 9 kHz) cannot lock under the lip
+//     mode's threshold, and a labiodental F or TH does not whistle there.
 //
-// the telemetry (whistle plan §4): whistle is the swing over its cap, as the
-// plan has it, weighted by how well the period holds from one crossing to the
-// next — a swing forced by hiss or by the voice is not a whistle, and without
-// the weight a sung line read up to 0.5.
+// the telemetry: whistle is the swing over its cap, weighted by how well the
+// period holds from one crossing to the next, so a swing forced by hiss or by
+// the voice does not read as a whistle (unweighted, a sung line reads up to
+// 0.5).
 //
 // shaped like the glottis: block-rate targets, a sample-rate step. no libm on
 // the sample path, no heap. the saturation caps |drive| at Uj / 2, so the

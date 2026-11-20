@@ -1,4 +1,4 @@
-// monk_mouth — mmtool.cpp  (plan §11)
+// monk_mouth — mmtool.cpp
 // the one CLI. renders WAVs for the ear and numbers for the tables.
 //
 //   mmtool vowel AA --midi 48 --sec 2 -o aa.wav         ("rest" = the reference's rest shape)
@@ -596,7 +596,7 @@ int cmdCorpus(const Args& a) {
     return 0;
 }
 
-// ---- whistle: a live pose, a note through the table, the fit (whistle plan §7.2) -----------------------
+// ---- whistle: a live pose, a note through the table, the fit -------------------------------------------
 // a pose: folds open, velum shut, the tongue and lips as given, an optional
 // slot, and breath. a note: Voice::whistle, through the table. either way,
 // after the first 300 ms: the lock (periodicity over 300 .. 6000 Hz), the

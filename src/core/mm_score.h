@@ -1,4 +1,4 @@
-// monk_mouth — mm_score.h  (plan §9)
+// monk_mouth — mm_score.h
 // words on notes. the compiler turns phonemes into a time-sorted list of
 // (tick, channel, target, rate); the player pops due events into the same
 // target table the live setters write. scripted singing is a scripted hand.

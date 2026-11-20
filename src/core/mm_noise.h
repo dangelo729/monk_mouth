@@ -1,4 +1,4 @@
-// monk_mouth — mm_noise.h  (plan §3)
+// monk_mouth — mm_noise.h
 // white xorshift32 into two RBJ bandpass biquads — aspiration and frication —
 // plus the reference's noise modulator and turbulence window. nothing here
 // calls libm per sample.

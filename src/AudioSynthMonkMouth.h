@@ -1,13 +1,13 @@
-// monk_mouth — AudioSynthMonkMouth.h  (plan §10)
+// monk_mouth — AudioSynthMonkMouth.h
 // the one file that knows the platform. one custom AudioStream, zero inputs,
 // one output; it owns a mm::Voice and nothing else. polyphony is N instances
 // into a stock mixer. no heap after construction.
 //
-// the ENTIRE contents — includes too — sit inside #if defined(ARDUINO), so
+// all of this header, includes too, sits inside #if defined(ARDUINO), so
 // the umbrella MonkMouth.h stays safe on the host: there this header is
 // nothing, and tests and tools use mm::Voice directly. there is no host twin.
 //
-// handoff (plan §10): no lanes, no locks, no ordering rules.
+// handoff: no lanes, no locks, no ordering rules.
 //
 //   setters      each one fills the voice's pending target table inside a
 //                few-instruction interrupt mask (PRIMASK saved and restored,
@@ -15,21 +15,22 @@
 //                off). a pair like setTongue(pos, height) can never be seen
 //                half-written, and noteOn's pitch + breath + vibrato onset
 //                land in the same block.
-//   update()     masks interrupts ONLY around voice_.latch() — the ~100-byte
-//                copy of that table to the audio side (and, when one was set,
-//                the 140-byte tuning), sub-microsecond — and renders
-//                unmasked. a target set from the main loop lands at the top
-//                of the next block: one latency, for everything.
+//   update()     masks interrupts only around voice_.latch() — the copy of
+//                that table's changed channels to the audio side (at most
+//                208 bytes, and the 152-byte tuning when one was set),
+//                sub-microsecond — and renders unmasked. a target set from
+//                the main loop lands at the top of the next block: one
+//                latency, for everything.
 //   state()      copies the published BodyState back the same way.
-//   words        sing / say / speak / syllable run UNMASKED: the compile is long and
+//   words        sing / say / speak / syllable run unmasked: the compile is long and
 //                touches nothing the audio side reads. the commit is
 //                ScorePlayer::commit's flag protocol — withdraw the pending
-//                flag, fill the buffer the audio side is NOT playing, raise
+//                flag, fill the buffer the audio side is not playing, raise
 //                the flag — and beginBlock() flips buffers only while the
 //                flag is up. on a single core the audio interrupt can preempt
 //                the loop but never the reverse, so it sees either no commit
 //                or a whole one. call them from the main loop, not from an
-//                interrupt: they use ~10 KB of stack.
+//                interrupt: they use about 11 KB of stack.
 //
 // denormals: the flush-to-zero bit is set in FPDSCR at construction, because
 // update() runs in interrupt context and an exception's FPSCR is loaded from
@@ -49,7 +50,7 @@
 class AudioSynthMonkMouth : public AudioStream {
 public:
     // size is in sections, whole or not, set at construction and live by setSections:
-    // 22 = 17.5 cm (adult male), 19 ~ 15 cm, 16 ~ 12.7 cm, up to 26. one seeded xorshift32 per voice:
+    // 22 = 17.5 cm (adult male), 19 ~ 15 cm, 16 ~ 12.7 cm, anything from 2 to 64. one seeded xorshift32 per voice:
     // give each voice of a choir its own seed. statically allocate, never destroy.
     explicit AudioSynthMonkMouth(float sections = mm::kDefaultSections, uint32_t seed = 1);
 
@@ -61,6 +62,7 @@ public:
     // tract
     void setTongue(float pos01, float height01);    // pos 0 = back, 1 = front; height 1 = highest
     void setLips(float aperture01);                 // 0 closes
+    void setVowel(uint8_t phone);                   // tongue and lips posed as the table's vowel (mm::ph::AA ..)
     void setVelum(float open01);
     void setConstriction(int slot, float place01, float degree);   // degree <= 0 closes
     void clearConstriction(int slot);
@@ -75,8 +77,9 @@ public:
     // conveniences
     void noteOn(float midi, float vel01);   // pitch + breath + vibrato onset, one block
     void noteOff();                         // breath to 0
-    void whistle(float midi, float breath); // a whistle pose for this note from the table, and breath, one block (whistle plan §6)
-    // words (plan §9). false = bad phoneme or overflow, and nothing was disturbed.
+    void whistle(float midi, float breath); // a whistle pose for this note from the table, and breath, one block
+    void whistleRange(float& lo, float& hi) const;  // the notes whistle() reaches without folding
+    // words. false = bad phoneme or overflow, and nothing was disturbed.
     // main loop only (see above).
     bool syllable(const char* phones);      // now, at the current note
     bool sing(const mm::Syllable* syls, int n);

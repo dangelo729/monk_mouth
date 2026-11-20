@@ -1,4 +1,4 @@
-// monk_mouth — tests/test_glottis.cpp  (plan: Tests / Glottis)
+// monk_mouth — tests/test_glottis.cpp
 #include <cmath>
 #include <vector>
 

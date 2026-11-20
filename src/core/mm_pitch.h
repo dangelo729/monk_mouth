@@ -1,4 +1,4 @@
-// monk_mouth — mm_pitch.h  (plan §6)
+// monk_mouth — mm_pitch.h
 // the pitch axis: a target note eased in log frequency, plus vibrato and
 // wobble in cents. one f0 per block; the glottis latches it per period.
 #pragma once

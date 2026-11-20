@@ -1,4 +1,4 @@
-// monk_mouth — tests/test_voice.cpp  (plan: Tests / Voice)
+// monk_mouth — tests/test_voice.cpp
 // all of it at N = 22, and again at N = 16 and N = 26.
 #include <cmath>
 #include <cstring>
@@ -455,4 +455,60 @@ MM_TEST(voice_sings_at_every_legal_size) {
     }
     Voice under(kMinSections - 5, 1), over(kMaxSections + 50, 1);         // outside the arrays: held to them
     CHECK(under.sections() == kMinSections && over.sections() == kMaxSections);
+}
+
+// setVowel(phone) is the table's vowel on the pose setters: the same eased
+// pose, and the same sound within float rounding, as mapping its raw units
+// onto setTongue and setLips by hand. its lips are a sung vowel's, so a
+// lipRound reshapes them as it does a score's; a phone that is not a vowel
+// sets nothing.
+MM_TEST(voice_set_vowel_is_the_hand_mapping) {
+    for (int n : kSizes) {
+        for (uint8_t p = ph::firstVowel; p <= ph::lastVowel; ++p) {
+            const VowelPose& vp = vowel(p);
+            Voice a(n, 5), b(n, 5);
+            a.setVowel(p);
+            b.setTongue((vp.tongueX - kTongueXMin) / (kTongueXMax - kTongueXMin),
+                        (kTongueDMax - vp.tongueD) / (kTongueDMax - kTongueDMin));
+            b.setLips(vp.lipD / kLipDMax);
+            a.noteOn(48.0f, 0.8f);
+            b.noteOn(48.0f, 0.8f);
+            std::vector<float> xa(22050), xb(22050);
+            a.render(xa.data(), (int)xa.size());
+            b.render(xb.data(), (int)xb.size());
+            const BodyState sa = a.state(), sb = b.state();
+            CHECK_MSG(std::fabs(sa.tonguePos - sb.tonguePos) < 1e-5f && std::fabs(sa.tongueHeight - sb.tongueHeight) < 1e-5f &&
+                          std::fabs(sa.lips - sb.lips) < 1e-5f,
+                      "N=%d %s: tongue %.6f %.6f lips %.6f, by hand %.6f %.6f %.6f", n, phoneName(p), sa.tonguePos,
+                      sa.tongueHeight, sa.lips, sb.tonguePos, sb.tongueHeight, sb.lips);
+            double diff = 0.0, ref = 0.0;
+            for (size_t i = 0; i < xa.size(); ++i) {
+                diff += ((double)xa[i] - xb[i]) * ((double)xa[i] - xb[i]);
+                ref += (double)xb[i] * xb[i];
+            }
+            CHECK_MSG(ref > 0.0 && diff < 1e-8 * ref, "N=%d %s: differs from the hand mapping at %.1f dB", n,
+                      phoneName(p), 10.0 * std::log10(diff / ref + 1e-30));
+        }
+    }
+    {   Tuning t;
+        t.lipRound = 0.6f;
+        Voice v(22, 5);
+        v.setTuning(t);
+        v.setVowel(ph::AA);
+        std::vector<float> x(22050);
+        v.render(x.data(), (int)x.size());
+        const float expect = clampf(vowelLips(vowel(ph::AA).lipD, t.lipRound), 0.0f, kLipDMax) / kLipDMax;
+        CHECK_MSG(std::fabs(v.state().lips - expect) < 1e-3f, "lipRound 0.6: lips %.4f, a sung AA's %.4f",
+                  v.state().lips, expect);
+    }
+    {   Voice v(22, 5), fresh(22, 5);
+        v.setVowel(ph::S);
+        v.setVowel(ph::none);
+        v.setVowel(200);
+        std::vector<float> x(4410);
+        v.render(x.data(), (int)x.size());
+        fresh.render(x.data(), (int)x.size());
+        const BodyState s = v.state(), f = fresh.state();
+        CHECK(s.tonguePos == f.tonguePos && s.tongueHeight == f.tongueHeight && s.lips == f.lips);
+    }
 }

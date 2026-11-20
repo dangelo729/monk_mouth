@@ -1,4 +1,4 @@
-// monk_mouth — AudioSynthMonkMouth.cpp  (plan §10)
+// monk_mouth — AudioSynthMonkMouth.cpp
 // the header self-guards on #if defined(ARDUINO), so on the host this
 // translation unit is intentionally empty.
 #include "AudioSynthMonkMouth.h"
@@ -16,7 +16,7 @@ namespace {
 
 constexpr uint32_t kFlushToZero = 1u << 24;       // FPSCR / FPDSCR bit FZ
 
-// everything masked, for a few dozen bytes of copy. PRIMASK is saved and
+// everything masked, for a short copy. PRIMASK is saved and
 // restored rather than blindly re-enabled: a setter called from inside
 // someone else's critical section must not end it.
 class IrqMask {
@@ -40,9 +40,9 @@ private:
 static_assert(AUDIO_BLOCK_SAMPLES > 0, "AUDIO_BLOCK_SAMPLES must be positive");
 
 // init-only, so it lives in flash. FZ makes denormals flush to zero. setting
-// it in the thread's FPSCR alone would NOT cover update(): on ARMv7-M a new
-// floating-point context in an exception is loaded from FPDSCR. verify on
-// hardware (plan: stage 2) — CPU must not rise as a note rings out.
+// it in the thread's FPSCR alone would not cover update(): on ARMv7-M a new
+// floating-point context in an exception is loaded from FPDSCR. 99_Benchmark's
+// last phase watches for it: cpu should fall as the notes ring out, not rise.
 FLASHMEM void AudioSynthMonkMouth::initFlushToZero() {
     static bool done = false;
     if (done) return;
@@ -66,6 +66,7 @@ void AudioSynthMonkMouth::setGlottis(float open01)    { IrqMask m; voice_.setGlo
 void AudioSynthMonkMouth::setTenseness(float t01)     { IrqMask m; voice_.setTenseness(t01); }
 void AudioSynthMonkMouth::setTongue(float pos01, float height01) { IrqMask m; voice_.setTongue(pos01, height01); }
 void AudioSynthMonkMouth::setLips(float aperture01)   { IrqMask m; voice_.setLips(aperture01); }
+void AudioSynthMonkMouth::setVowel(uint8_t phone)     { IrqMask m; voice_.setVowel(phone); }
 void AudioSynthMonkMouth::setVelum(float open01)      { IrqMask m; voice_.setVelum(open01); }
 void AudioSynthMonkMouth::setConstriction(int slot, float place01, float degree) {
     IrqMask m; voice_.setConstriction(slot, place01, degree);
@@ -82,6 +83,7 @@ void AudioSynthMonkMouth::setSections(float sections) { IrqMask m; voice_.setSec
 void AudioSynthMonkMouth::noteOn(float midi, float vel01) { IrqMask m; voice_.noteOn(midi, vel01); }
 void AudioSynthMonkMouth::noteOff()                   { IrqMask m; voice_.noteOff(); }
 void AudioSynthMonkMouth::whistle(float midi, float breath) { IrqMask m; voice_.whistle(midi, breath); }
+void AudioSynthMonkMouth::whistleRange(float& lo, float& hi) const { voice_.whistleRange(lo, hi); }   // caller side only: no mask
 void AudioSynthMonkMouth::setHalfband(bool on)        { voice_.setHalfband(on); }   // one byte: atomic as it is
 
 // ---- words: compiled here, caller-side and unmasked; committed by flag -------------------------------
@@ -116,7 +118,7 @@ int AudioSynthMonkMouth::diameters(float* out, int max) const {
 
 void AudioSynthMonkMouth::update(void) {
     {
-        IrqMask m;                                // ~100 bytes (~240 with a tuning), sub-microsecond
+        IrqMask m;                                // at most 208 bytes (360 with a tuning), sub-microsecond
         voice_.latch();
     }
     voice_.render(scratch_, AUDIO_BLOCK_SAMPLES);

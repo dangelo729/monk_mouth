@@ -1,4 +1,4 @@
-// monk_mouth — mm_jet.cpp  (whistle plan §3, §4)
+// monk_mouth — mm_jet.cpp
 #include "mm_jet.h"
 
 namespace mm {
@@ -23,9 +23,8 @@ constexpr float kHzRate      = 50.0f;      // per second: whistleHz approaches i
 
 void Jet::init(float fs) {
     fs_ = fs;
-    const float pi = 3.14159265358979f;
-    leak_ = std::exp(-2.0f * pi * kJetLeakHz / fs);
-    lowpass_ = 1.0f - std::exp(-2.0f * pi * kJetLowpassHz / fs);
+    leak_ = std::exp(-2.0f * kPi * kJetLeakHz / fs);
+    lowpass_ = 1.0f - std::exp(-2.0f * kPi * kJetLowpassHz / fs);
     peakDecay_ = std::exp(-1.0f / (kPeakSec * fs));
     hzCoef_ = approachCoef(kHzRate, (float)kBlock / fs);
     reset();

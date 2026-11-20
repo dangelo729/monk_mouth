@@ -1,4 +1,4 @@
-// monk_mouth — tests/test_whistle.cpp  (whistle plan §6, §7.3, stage 3)
+// monk_mouth — tests/test_whistle.cpp
 // whistle(midi, breath) through the table: every row locks on its note, a
 // note change slides, and a note outside the range folds into it by octaves.
 #include <cmath>

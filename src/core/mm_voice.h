@@ -1,4 +1,4 @@
-// monk_mouth — mm_voice.h  (plan §7; whistle plan §3, §4, §6)
+// monk_mouth — mm_voice.h
 // the voice: the whole public surface. you move a mouth; the sound is the
 // consequence.
 //
@@ -78,7 +78,7 @@ struct BodyState {
 
 class Voice {
 public:
-    // size is in sections, whole or not: 22 = 17.5 cm (adult male), 19 ~ 15 cm, 16 ~ 12.7 cm, up to 26.
+    // size is in sections, whole or not: 22 = 17.5 cm (adult male), 19 ~ 15 cm, 16 ~ 12.7 cm, anything from 2 to 64.
     explicit Voice(float sections = kDefaultSections, uint32_t seed = 1, float sampleRate = kDefaultFs);
 
     // lungs + larynx
@@ -89,6 +89,7 @@ public:
     // tract
     void setTongue(float pos01, float height01);    // pos 0 = back, 1 = front; height 1 = highest
     void setLips(float aperture01);                 // 0 closes
+    void setVowel(uint8_t phone);                   // tongue and lips posed as the table's vowel (ph::AA ..)
     void setVelum(float open01);
     void setConstriction(int slot, float place01, float degree);   // degree <= 0 closes
     void clearConstriction(int slot);
@@ -105,7 +106,7 @@ public:
     void noteOff();                         // breath to 0
     void whistle(float midi, float breath); // a whistle pose for this note from the table, and breath; ends any words in flight
     void whistleRange(float& lo, float& hi) const;  // the notes whistle() reaches without folding
-    // words (§9). false = bad phoneme or overflow, and nothing was disturbed.
+    // words. false = bad phoneme or overflow, and nothing was disturbed.
     bool syllable(const char* phones);      // now, at the current note
     bool sing(const Syllable* syls, int n);
     bool sing(const Syllable* syls, int n, float breath);    // at this breath; the voice's own level stays

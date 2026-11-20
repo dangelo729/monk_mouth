@@ -1,5 +1,5 @@
 # monk_mouth — extras/host/Makefile
-# the host rig (plan §11). everything but the Teensy wrapper compiles here with
+# the host rig. everything but the Teensy wrapper compiles here with
 # clang and nothing else.
 #
 #   make test     build and run every test in tests/
