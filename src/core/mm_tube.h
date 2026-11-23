@@ -1,8 +1,9 @@
 // monk_mouth — mm_tube.h
-// a Kelly-Lochbaum waveguide ported from Pink Trombone's Tract.runStep:
-// right- and left-going waves, one reflection coefficient per junction, a
-// fixed-shape nose branch joined by a three-port junction at x = 17/44.
-// one step per output sample; sections of c/Fs = 0.794 cm each.
+// a kelly-lochbaum waveguide adapted from pink trombone's Tract.runStep (the
+// reference: extras/reference/pinktrombone.html): right- and left-going
+// waves, one reflection coefficient per junction, a fixed-shape nose branch
+// joined by a three-port junction at x = 17/44. one step per output sample;
+// sections of c/Fs each, 0.794 cm at 44.1 kHz.
 //
 // the waves are area-weighted pressure (P = A*p), which is why the reference's
 // junction transmits (1 - k) into a constriction and its three-port is exact.

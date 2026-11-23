@@ -1,8 +1,9 @@
 // monk_mouth — mm_glottis.h
-// the Liljencrants-Fant pulse with one knob, ported from Pink Trombone's
-// Glottis.setupWaveform. the reference evaluates exp and sin per sample; here
-// the same waveform runs as recurrences reseeded from the closed form every
-// period, so error cannot accumulate and the per-sample path calls no libm.
+// the liljencrants-fant pulse with one knob, adapted from pink trombone's
+// Glottis.setupWaveform (the reference: extras/reference/pinktrombone.html).
+// the reference evaluates exp and sin per sample; here the same waveform runs
+// as recurrences reseeded from the closed form every period, so error cannot
+// accumulate and the per-sample path calls no libm.
 //
 //   open phase    E0 * e^(alpha t) * sin(omega t)  -> a damped rotation of (s, c)
 //   return phase  (shift - u) / Delta              -> u decays geometrically

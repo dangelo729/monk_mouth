@@ -1,9 +1,10 @@
 // monk_mouth — AudioSynthMonkMouth.cpp
-// the header self-guards on #if defined(ARDUINO), so on the host this
-// translation unit is intentionally empty.
+// the header self-guards on an arduino core with the teensy core's
+// AudioStream.h, so everywhere else this translation unit is intentionally
+// empty.
 #include "AudioSynthMonkMouth.h"
 
-#if defined(ARDUINO)
+#if defined(ARDUINO) && __has_include(<AudioStream.h>)
 
 // the architectural address of the Floating-Point Default Status Control
 // Register. the Teensy core defines it; keep a fallback so the wrapper never
@@ -135,4 +136,4 @@ void AudioSynthMonkMouth::update(void) {
     release(block);
 }
 
-#endif  // defined(ARDUINO)
+#endif  // defined(ARDUINO) && __has_include(<AudioStream.h>)

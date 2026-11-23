@@ -18,6 +18,6 @@
   "platforms": "teensy",
   "headers": "MonkMouth.h",
   "export": {
-    "exclude": ["extras", "test"]
+    "exclude": ["extras"]
   }
 }

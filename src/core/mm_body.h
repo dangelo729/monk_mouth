@@ -5,6 +5,9 @@
 //
 // everything that moves obeys one law: x += (target - x) * (1 - exp(-rate dt)).
 // the body has no events. a stop bursts because a closed section opened.
+//
+// the anatomy and the release transient are adapted from pink trombone's
+// TractUI and Tract (the reference: extras/reference/pinktrombone.html).
 #pragma once
 
 #include "mm_config.h"
@@ -74,7 +77,12 @@ struct Channel {
         if (rate > 0.0f) coefUp = coefDown = approachCoef(rate, dt);
         else { coefUp = defUp; coefDown = defDown; }
     }
-    void ease() { x += (target - x) * (target > x ? coefUp : coefDown); }
+    // a target and a value further apart than a float carries overflow their
+    // difference, and a nan would never ease back: the channel lands on its target
+    void ease() {
+        x += (target - x) * (target > x ? coefUp : coefDown);
+        if (x != x) x = target;
+    }
 };
 
 // what the sample loop needs from one block of body

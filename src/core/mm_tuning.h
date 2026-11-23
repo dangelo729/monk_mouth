@@ -25,7 +25,7 @@ struct Tuning {
     // ---- larynx ---------------------------------------------------------------------
     float glottisRest       = 0.0f;     // how open the folds sit when voiced: standing breathiness
     float growl             = 0.0f;     // every other pulse this much weaker: an octave under the note, heard as growl
-    // the reference's noise gains are 0.2 and 0.66. measured against an open
+    // pink trombone's noise gains are 0.2 and 0.66. measured against an open
     // vowel they put /s/ 19 dB down and /h/ 30 dB down; speech has them near 12
     // and 18. these defaults were set by that measurement (mmtool trace).
     float aspirationGain    = 0.8f;     // the air in the voice, and how loud /h/ is
@@ -38,7 +38,7 @@ struct Tuning {
     // ---- pipe -----------------------------------------------------------------------
     float glottalReflection = 0.75f;    // formant sharpness, throat end: low is lossy
     float lipReflection     = -0.85f;   // formant sharpness, mouth end: toward -1 rings
-    float damp              = 0.998f;   // wall loss per section; reference 0.999 per 3.97 mm, squared
+    float damp              = 0.998f;   // wall loss per section; pink trombone's 0.999 per 3.97 mm, squared
     float throatD           = 0.6f;     // the tube just above the larynx: narrow is twang
     float throatUpperD      = 1.1f;     // the step up into the pharynx
     float velumRest         = 0.0f;     // how open the nose sits when shut: standing nasality

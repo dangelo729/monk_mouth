@@ -391,7 +391,8 @@ void Voice::renderRun(float* out, int n) {
 
         float y = tube_.step(source);
         if (useHalfband_) y = halfband_.process(y);
-        out[i] = clampf(y * out_, -1.0f, 1.0f);
+        const float s = y * out_;
+        out[i] = s > -1.0f ? (s < 1.0f ? s : 1.0f) : (s <= -1.0f ? -1.0f : 0.0f);   // a NaN is silence
     }
 }
 
@@ -400,9 +401,14 @@ void Voice::endBlock() {
     jet_.endBlock();
 
     // the silence gate: no breath, nothing ringing -> zero the wave state.
-    // real silence, and no denormals.
-    if (!silent_ && body_.breath() <= 0.0f && body_.breathTarget() <= 0.0f &&
-        !body_.transientsAlive() && tube_.energy() < kSilenceEnergy) {
+    // real silence, and no denormals. a pipe holding a NaN is zeroed the same
+    // way, breath or not: a finite number past what a float carries through
+    // the sample loop (a breath past about 3e19) puts one there, and a NaN
+    // never rings out. the next block starts from silence.
+    const float energy = tube_.energy();
+    if (std::isnan(energy) ||
+        (!silent_ && body_.breath() <= 0.0f && body_.breathTarget() <= 0.0f &&
+         !body_.transientsAlive() && energy < kSilenceEnergy)) {
         silent_ = true;
         tube_.reset();
         halfband_.reset();

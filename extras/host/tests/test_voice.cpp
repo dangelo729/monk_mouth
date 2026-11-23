@@ -582,3 +582,90 @@ MM_TEST(voice_ignores_a_number_that_is_not_finite) {
         }
     for (float x : bad) CHECK(Voice(22, 1, x).sampleRate() == kDefaultFs);
 }
+
+// a finite number can still be more than a float carries through the sample
+// loop: a breath past about 3e19, a tenseness past about 4e25, a throat past
+// about 2e19 put a NaN in the pipe. the output stays finite and inside
+// [-1, 1], the readback finite, and once the number is taken back the voice
+// sings again, as loud as a voice that was never pushed there.
+MM_TEST(voice_sings_again_after_an_overflow) {
+    struct Case { const char* name; void (*push)(Voice&); void (*back)(Voice&); float wait; };
+    const Case cases[] = {
+        {"breath 1e20", [](Voice& v) { v.setBreath(1e20f); }, [](Voice& v) { v.noteOff(); }, 5.0f},
+        {"tenseness 1e30", [](Voice& v) { v.setTenseness(1e30f); },
+         [](Voice& v) { v.setTenseness(kDefaultTenseness); }, 8.0f},
+        {"throatD 1e20", [](Voice& v) { Tuning t; t.throatD = 1e20f; v.setTuning(t); },
+         [](Voice& v) { v.setTuning(Tuning()); }, 0.5f},
+    };
+    const int period = (int)std::lround(kDefaultFs / 220.0);
+    for (int n : kSizes)
+        for (const Case& c : cases) {
+            Voice v(n, 3), fresh(n, 3);
+            for (Voice* w : {&v, &fresh}) { w->setWobble(0.0f); w->setVibrato(0.0f, 0.0f, 0.0f); }
+            std::vector<float> x(22050), note(44100), ref(44100);
+            v.noteOn(50.0f, 0.8f);
+            v.render(x.data(), (int)x.size());
+            c.push(v);
+            bool finite = true, inside = true;
+            for (int k = 0; k < 4; ++k) {                                   // 2 s pushed
+                v.render(x.data(), (int)x.size());
+                for (float y : x) {
+                    if (!std::isfinite(y)) finite = false;
+                    else if (std::fabs(y) > 1.0f) inside = false;
+                }
+            }
+            const BodyState s = v.state();
+            const float read[] = {s.breath, s.glottis, s.tenseness, s.lips, s.velum, s.midi, s.f0, s.vibrato,
+                                  s.voicing, s.hiss, s.pressure, s.whistle, s.whistleHz};
+            for (float y : read) if (!std::isfinite(y)) finite = false;
+            CHECK_MSG(finite && inside, "N=%d %s: output or readback past [-1, 1] or not finite", n, c.name);
+
+            c.back(v);
+            for (int k = 0; k < (int)(c.wait * 2.0f); ++k) v.render(x.data(), (int)x.size());
+            v.noteOn(57.0f, 0.8f);                                          // A3 = 220 Hz
+            fresh.noteOn(57.0f, 0.8f);
+            v.render(note.data(), (int)note.size());
+            fresh.render(ref.data(), (int)ref.size());
+            bool sings = true;
+            for (float y : note) if (!std::isfinite(y)) sings = false;
+            const double level = rms(note.data() + 22050, 16384), want = rms(ref.data() + 22050, 16384);
+            CHECK_MSG(sings && periodicity(note.data() + 22050, 8192, period - 2, period + 2) > 0.9 &&
+                      std::fabs(toDb(level) - toDb(want)) < 0.5,
+                      "N=%d %s: the next note is at %.1f dB, a fresh voice's at %.1f dB", n, c.name, toDb(level),
+                      toDb(want));
+        }
+}
+
+// a body channel's target and its value can sit further apart than a float
+// carries: a glottis rest flipped from one huge number to its opposite
+// overflows their difference. the channel lands on its target, so the
+// readback stays finite and, on its defaults again, the voice sings as loud
+// as one that was never pushed there.
+MM_TEST(voice_sings_again_after_a_channel_overflows) {
+    Voice v(22, 3), fresh(22, 3);
+    for (Voice* w : {&v, &fresh}) { w->setWobble(0.0f); w->setVibrato(0.0f, 0.0f, 0.0f); }
+    std::vector<float> x(22050), note(44100), ref(44100);
+    const int period = (int)std::lround(kDefaultFs / 220.0);
+    v.noteOn(50.0f, 0.8f);
+    v.render(x.data(), (int)x.size());
+    Tuning t;
+    for (float rest : {3e38f, -3e38f}) {
+        t.glottisRest = rest;
+        v.setTuning(t);
+        v.render(x.data(), (int)x.size());
+    }
+    v.setTuning(Tuning());
+    v.noteOff();
+    for (int k = 0; k < 40; ++k) v.render(x.data(), (int)x.size());      // 20 s on its defaults
+    CHECK_MSG(std::isfinite(v.state().glottis), "the glottis reads %g", (double)v.state().glottis);
+    v.noteOn(57.0f, 0.8f);                                                // A3 = 220 Hz
+    fresh.noteOn(57.0f, 0.8f);
+    v.render(note.data(), (int)note.size());
+    fresh.render(ref.data(), (int)ref.size());
+    bool sings = true;
+    for (float y : note) if (!std::isfinite(y)) sings = false;
+    const double level = rms(note.data() + 22050, 16384), want = rms(ref.data() + 22050, 16384);
+    CHECK_MSG(sings && periodicity(note.data() + 22050, 8192, period - 2, period + 2) > 0.9 &&
+              std::fabs(toDb(level) - toDb(want)) < 0.5,
+              "the next note is at %.1f dB, a fresh voice's at %.1f dB", toDb(level), toDb(want));
+}

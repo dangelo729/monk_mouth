@@ -1,7 +1,7 @@
 // monk_mouth — mm_noise.h
 // white xorshift32 into two RBJ bandpass biquads — aspiration and frication —
-// plus the reference's noise modulator and turbulence window. nothing here
-// calls libm per sample.
+// plus pink trombone's noise modulator and turbulence window (the reference:
+// extras/reference/pinktrombone.html). nothing here calls libm per sample.
 #pragma once
 
 #include "mm_config.h"

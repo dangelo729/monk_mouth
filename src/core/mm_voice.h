@@ -70,7 +70,7 @@ struct BodyState {
     float hiss = 0;                     // strongest turbulence, 0..1
     float pressure = 0;                 // behind a closure
     bool  closed = false;               // some source is shut
-    bool  busy = false;                 // a score is playing
+    bool  busy = false;                 // a score still has targets to set
     uint8_t phoneme = ph::none;         // the score's current phoneme
     float whistle = 0;                  // the jet's swing over its cap, 0..1: near 1 locked
     float whistleHz = 0;                // the whistle's pitch; held while whistle is down
@@ -79,10 +79,15 @@ struct BodyState {
 class Voice {
 public:
     // size is in sections, whole or not: 22 = 17.5 cm (adult male), 19 ~ 15 cm, 16 ~ 12.7 cm, anything from 2 to 64.
+    // the tube is one section a sample, so those lengths, the vowels and the whistle table hold near 44.1 kHz,
+    // where they were fitted: at another rate every formant moves with the rate (8.8 % up at 48 kHz) and
+    // whistle() goes sharp. pitch, rates, noise bands and the jet are in hertz and seconds, and follow the rate.
     explicit Voice(float sections = kDefaultSections, uint32_t seed = 1, float sampleRate = kDefaultFs);
 
     // a number that is not finite (NaN, an infinity) sets nothing; a word call given one returns false
-    // lungs + larynx
+    // lungs + larynx. breath is the loudness, in proportion: 0 silent, 0 .. 1 the
+    // playing range, 1 a full voice; past 1 louder until the output clips, on the
+    // loudest notes from about 1.6 (extras/docs/api.md)
     void setBreath(float p01);              // the loudness axis; 0 = silent
     void setPitch(float midi);
     void setGlottis(float open01);          // 0 voiced .. 1 open (h, whisper, voiceless)
@@ -103,7 +108,8 @@ public:
     Tuning tuning() const { return tuning_; }       // the last one asked for, as clamped
     void   setSections(float sections);             // the size, live: held to kMinSections .. kMaxSections
     // conveniences
-    void noteOn(float midi, float vel01);   // pitch + breath + vibrato onset
+    void noteOn(float midi, float vel01);   // pitch + breath + vibrato onset; vel01 is the breath:
+                                            // a MIDI velocity goes in as velocity / 127.0f
     void noteOff();                         // breath to 0
     void whistle(float midi, float breath); // a whistle pose for this note from the table, and breath; ends any words in flight
     void whistleRange(float& lo, float& hi) const;  // the notes whistle() reaches without folding
@@ -117,7 +123,7 @@ public:
     bool speak(const char* phones);                    // Speech() defaults
     bool speak(const char* phones, const Speech& s);
     void stop();
-    bool busy() const { return player_.busy(); }
+    bool busy() const { return player_.busy(); }    // a score still has targets to set; the last release sounds after
     // readback
     BodyState state() const { return state_; }      // eased pose, f0, vibrato, voicing, hiss, closed, phoneme, whistle
     int  diameters(float* out, int max) const;

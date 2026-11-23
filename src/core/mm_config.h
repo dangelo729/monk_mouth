@@ -42,6 +42,7 @@ constexpr float kOutputGain        = 0.25f;    // tube output -> [-1, 1]
 constexpr float kSilenceEnergy     = 1e-9f;    // the silence gate
 
 // ---- anatomy: the reference's landmarks, as fractions of tract length -------
+// the reference is pink trombone, extras/reference/pinktrombone.html.
 constexpr float kTongueXMin = 12.0f / 44.0f;   // 0.273
 constexpr float kTongueXMax = 29.0f / 44.0f;   // 0.659
 constexpr float kTongueDMin = 2.05f;           // the tongue at its highest

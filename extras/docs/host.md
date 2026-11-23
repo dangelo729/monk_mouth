@@ -5,7 +5,7 @@ library. The rig lives in `extras/host`; the root `Makefile` forwards to it, so
 these work from either place:
 
 ```
-make test        # every test in extras/host/tests: tube, glottis, body, voice, vocabulary, score, tuning, jet, whistle
+make test        # every test in extras/host/tests: tube, glottis, body, voice, vocabulary, score, tuning, jet, whistle, umbrella
 make tool        # extras/host/build/mmtool
 make corpus      # every phoneme in three vowel contexts, and the sung lines in
                  # extras/host/corpus/, as WAVs in extras/host/build/corpus/
@@ -14,7 +14,7 @@ make corpus      # every phoneme in three vowel contexts, and the sung lines in
 The `mmtool` lines below are run from `extras/host` (`./build/mmtool ...`).
 
 ```
-mmtool vowel AA --midi 48 --sec 2 -o aa.wav      ("rest" = the reference's rest shape)
+mmtool vowel AA --midi 48 --sec 2 -o aa.wav      ("rest" = Pink Trombone's rest shape)
 mmtool pose --tongue .3 .8 --lips .9 -o pose.wav
 mmtool formants --tongue .3 .8 --lips .9         F1..F4 of a static shape (or: formants AA)
 mmtool fit                                       grid-search every vowel pose; prints the table

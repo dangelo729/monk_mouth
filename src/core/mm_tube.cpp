@@ -1,4 +1,5 @@
 // monk_mouth — mm_tube.cpp
+// adapted from pink trombone's Tract (the reference: extras/reference/pinktrombone.html).
 #include "mm_tube.h"
 
 namespace mm {

@@ -1,4 +1,5 @@
 // monk_mouth — mm_body.cpp
+// the anatomy adapted from pink trombone (the reference: extras/reference/pinktrombone.html).
 #include "mm_body.h"
 
 #include "mm_noise.h"
@@ -37,7 +38,7 @@ static float tongueSoften(float x) {
     return 0.8f;
 }
 
-// TractUI.handleTouches: a constriction is wide at the back, narrow at the front
+// the reference's TractUI.handleTouches: a constriction is wide at the back, narrow at the front
 static float slotWidth(float place) {
     const float back = 25.0f / 44.0f, front = 32.0f / 44.0f;
     const float wide = 10.0f / 44.0f, narrow = 5.0f / 44.0f;
@@ -182,7 +183,7 @@ void Body::resize(float sections) {
 }
 
 void Body::setBreath(float p01, float rate) {
-    breath_.aim(p01 > 0.0f ? p01 : kBreathAim, rate, dt_);         // a breath of 0 arrives; past 1 is only louder
+    breath_.aim(p01 > 0.0f ? p01 : kBreathAim, rate, dt_);         // a breath of 0 arrives; past 1 is louder, up to the output clamp
 }
 void Body::setGlottis(float open01, float rate) {
     glottisAsk_ = clampf(open01, 0.0f, 1.0f);

@@ -3,7 +3,8 @@
 
 namespace mm {
 
-// Glottis.setupWaveform, line for line. normalized to time = 1, Ee = 1.
+// pink trombone's Glottis.setupWaveform (extras/reference/pinktrombone.html),
+// line for line. normalized to time = 1, Ee = 1.
 LfShape lfSetup(float tenseness) {
     float Rd = 3.0f * (1.0f - tenseness);
     if (Rd < 0.5f) Rd = 0.5f;

@@ -29,8 +29,9 @@ Almost nothing is limited. A value that sounds broken is yours to find: a
 breath of 3, a throat of 0.2, a rate of a million, a velum resting wide open
 (which, by the body's own rule for a nasal voice, stops every burst and hiss)
 all run. `setTuning` (`clamped()`) holds only the fields where a value past
-the line does not sound bad but ends the voice, with a full-scale blast and
-then NaN until the voice is rebuilt:
+the line does not sound bad but ends the voice: a band, the pipe or a click
+runs away, and for as long as the value stands the voice is full-scale blasts
+and silence:
 
 | field | held to | past it |
 |---|---|---|
@@ -44,6 +45,14 @@ A NaN or an infinity in any field falls back to its default, and
 `setTenseness` floors at 0 (the voicing gain is a root of it). A rate of 0 or
 less is a jump. With all of these at their limits at once the voice stays
 finite, and sings again when handed the defaults.
+
+A finite number can still be more than a float carries through the sample
+loop: a breath past about 3e19, a tenseness past about 4e25, a `throatD` past
+about 2e19 put a NaN in the pipe. Nothing past [-1, 1] leaves `render()`: a
+NaN comes out as silence, and the pipe is emptied at the end of the block. The
+voice sings again once the number is taken back, as fast as that part eases
+back from where it was sent: a note sounds as it should about 4 s after a
+breath of 1e20, 7 s after a tenseness of 1e30.
 
 ## Fields with behaviours of their own
 
@@ -62,8 +71,10 @@ finite, and sings again when handed the defaults.
   new one ramps across the block it lands on, so a held note never steps.
 
 The throat moves formants and the vowel table was fitted against one throat,
-so `mmtool throat` is the guide: it maps which throats keep both vowel gates
-at every human size. It is a map, not a limit.
+so `mmtool throat` is the guide: it maps which throats keep the vowels, each
+monophthong's F1 and F2 within 15 % of its target at N = 22 and the vowels'
+F1 and F2 orderings at every human size, 16 to 26 (the two vowel tests in
+`extras/host/tests/test_vocab.cpp`). It is a map, not a limit.
 
 ## What stays fixed
 

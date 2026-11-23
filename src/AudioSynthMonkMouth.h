@@ -3,11 +3,14 @@
 // one output; it owns a mm::Voice and nothing else. polyphony is N instances
 // into a stock mixer. no heap after construction.
 //
-// all of this header, includes too, sits inside #if defined(ARDUINO), so
-// the umbrella MonkMouth.h stays safe on the host: there this header is
-// nothing, and tests and tools use mm::Voice directly. there is no host twin.
+// all of this header, includes too, is compiled only on an arduino core that
+// has the teensy core's AudioStream.h, so the umbrella MonkMouth.h stays safe
+// everywhere else: on the host, or on a board without the teensy audio
+// stream, this header is nothing, and mm::Voice is used directly. there is
+// no host twin.
 //
-// handoff: no lanes, no locks, no ordering rules.
+// handoff: the caller takes no lock and fills no queue. one rule: the word
+// calls run from the main loop, never from an interrupt (words, below).
 //
 //   setters      each one fills the voice's pending target table inside a
 //                few-instruction interrupt mask (PRIMASK saved and restored,
@@ -38,7 +41,7 @@
 // belt and braces.
 #pragma once
 
-#if defined(ARDUINO)
+#if defined(ARDUINO) && __has_include(<AudioStream.h>)
 
 // core headers only — no dependency on the Audio library itself.
 // AUDIO_BLOCK_SAMPLES and AUDIO_SAMPLE_RATE_EXACT live in the core's AudioStream.h.
@@ -54,7 +57,9 @@ public:
     // give each voice of a choir its own seed. statically allocate, never destroy.
     explicit AudioSynthMonkMouth(float sections = mm::kDefaultSections, uint32_t seed = 1);
 
-    // lungs + larynx
+    // lungs + larynx. breath is the loudness, in proportion: 0 silent, 0 .. 1 the
+    // playing range, 1 a full voice; past 1 louder until the output clips, on the
+    // loudest notes from about 1.6 (extras/docs/api.md)
     void setBreath(float p01);              // the loudness axis; 0 = silent
     void setPitch(float midi);
     void setGlottis(float open01);          // 0 voiced .. 1 open (h, whisper, voiceless)
@@ -75,7 +80,8 @@ public:
     mm::Tuning tuning() const;              // the last one asked for, as clamped
     void setSections(float sections);       // the size, live: a held note carries on at the new length
     // conveniences
-    void noteOn(float midi, float vel01);   // pitch + breath + vibrato onset, one block
+    void noteOn(float midi, float vel01);   // pitch + breath + vibrato onset, one block; vel01 is the
+                                            // breath: a MIDI velocity goes in as velocity / 127.0f
     void noteOff();                         // breath to 0
     void whistle(float midi, float breath); // a whistle pose for this note from the table, and breath, one block
     void whistleRange(float& lo, float& hi) const;  // the notes whistle() reaches without folding
@@ -88,7 +94,8 @@ public:
     bool speak(const char* phones);                     // spoken, not sung: mm::Speech() defaults
     bool speak(const char* phones, const mm::Speech& s); // baseline, range, speed, breath (core/mm_score.h)
     void stop();
-    bool busy() const;                      // a volatile read of a flag the audio side keeps
+    bool busy() const;                      // a volatile read of a flag the audio side keeps: a score still has
+                                            // targets to set. the last release still sounds after it falls
     // readback, as of the end of the last block
     mm::BodyState state() const;            // eased pose, f0, voicing, hiss, closed, phoneme
     int  diameters(float* out, int max) const;
@@ -109,4 +116,4 @@ private:
     float     scratch_[AUDIO_BLOCK_SAMPLES];
 };
 
-#endif  // defined(ARDUINO)
+#endif  // defined(ARDUINO) && __has_include(<AudioStream.h>)

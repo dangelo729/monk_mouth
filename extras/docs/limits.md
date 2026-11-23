@@ -1,8 +1,10 @@
 # Known limits
 
-- A 1D tube has no teeth. S sits above SH, which keeps them apart, but
-  neither has a tooth's edge. The slit rule stands in for the whistle: a
-  consonant slot at the lips never whistles, a pucker does.
+- A 1D tube has no teeth. S hisses higher than SH (a spectral centroid near
+  6.2 kHz against 2.1: S is made further forward, at .82 of the tract against
+  .72, and SH rounds the lips), which keeps them apart, but neither has a
+  tooth's edge. The slit rule stands in for the whistle: a consonant slot at
+  the lips never whistles, a pucker does.
 - L and R are approximations: a constriction above the hiss window (R with
   narrowed lips). No lateral channel, no retroflexion, no low F3.
 - TH and DH are a weak hiss near the teeth (place .88, degree 0.3), close to F
@@ -18,7 +20,7 @@
   for length, accent and loudness and nothing finer: one phrase shape (a
   declarative fall), no question rise. Its consonants keep the sung table's
   holds. Live `syllable()` cannot anticipate: the vowel lands after the onset.
-- One score is 256 events: a line at a time.
+- One score is 256 events and 64 syllables: a line at a time.
 - The tongue body cannot close or hiss; only the two slots and the lips can.
 - The jet's transit does not scale with size. It is physical (a length over a
   speed), while every mode scales with 1/N, so the jet's reach in hertz stays
@@ -31,4 +33,7 @@
   the bottom of the range.
 - The whistle range is 18 semitones, F5 to B6 at N = 22: the fit finds no lock
   on the front cavity above about 2 kHz or below about 700 Hz.
+- The voice is in tune near 44.1 kHz. The tube is one section a sample, so at
+  another rate every formant moves with the rate, and `whistle()` goes sharp
+  or flat with it ([Voice size](api.md#voice-size)).
 - Not a self-oscillating fold model, not a 2D or 3D tract.
