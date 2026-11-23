@@ -512,3 +512,73 @@ MM_TEST(voice_set_vowel_is_the_hand_mapping) {
         CHECK(s.tonguePos == f.tonguePos && s.tongueHeight == f.tongueHeight && s.lips == f.lips);
     }
 }
+
+// a number that is not finite sets nothing: a NaN or an infinity handed to any
+// call that takes a number leaves a sounding voice as it was, sample for
+// sample, its readback finite, and a note played after it sings. a word call
+// given one returns false; a tuning's field takes its default, and so does a
+// sample rate.
+MM_TEST(voice_ignores_a_number_that_is_not_finite) {
+    struct Call { const char* name; void (*call)(Voice&, float); };
+    const Call calls[] = {
+        {"setBreath", [](Voice& v, float x) { v.setBreath(x); }},
+        {"setPitch", [](Voice& v, float x) { v.setPitch(x); }},
+        {"setGlottis", [](Voice& v, float x) { v.setGlottis(x); }},
+        {"setTenseness", [](Voice& v, float x) { v.setTenseness(x); }},
+        {"setTongue pos", [](Voice& v, float x) { v.setTongue(x, 0.5f); }},
+        {"setTongue height", [](Voice& v, float x) { v.setTongue(0.5f, x); }},
+        {"setLips", [](Voice& v, float x) { v.setLips(x); }},
+        {"setVelum", [](Voice& v, float x) { v.setVelum(x); }},
+        {"setConstriction place", [](Voice& v, float x) { v.setConstriction(0, x, 0.5f); }},
+        {"setConstriction degree", [](Voice& v, float x) { v.setConstriction(0, 0.5f, x); }},
+        {"setGlide", [](Voice& v, float x) { v.setGlide(x); }},
+        {"setVibrato rate", [](Voice& v, float x) { v.setVibrato(x, 40.0f, 0.1f); }},
+        {"setVibrato cents", [](Voice& v, float x) { v.setVibrato(5.0f, x, 0.1f); }},
+        {"setVibrato onset", [](Voice& v, float x) { v.setVibrato(5.0f, 40.0f, x); }},
+        {"setWobble", [](Voice& v, float x) { v.setWobble(x); }},
+        {"setSections", [](Voice& v, float x) { v.setSections(x); }},
+        {"setTuning", [](Voice& v, float x) {                          // every field at once
+             float f[sizeof(Tuning) / sizeof(float)];
+             for (float& y : f) y = x;
+             Tuning t;
+             std::memcpy(&t, f, sizeof t);
+             v.setTuning(t); }},
+        {"noteOn midi", [](Voice& v, float x) { v.noteOn(x, 0.8f); }},
+        {"noteOn vel", [](Voice& v, float x) { v.noteOn(55.0f, x); }},
+        {"whistle midi", [](Voice& v, float x) { v.whistle(x, 0.8f); }},
+        {"whistle breath", [](Voice& v, float x) { v.whistle(80.0f, x); }},
+        {"sing breath", [](Voice& v, float x) { const Syllable s[] = {{"L AA", 55.0f, 300}}; CHECK(!v.sing(s, 1, x)); }},
+        {"sing midi", [](Voice& v, float x) { const Syllable s[] = {{"L AA", x, 300}}; CHECK(!v.sing(s, 1)); }},
+        {"speak midi", [](Voice& v, float x) { Speech s; s.midi = x; CHECK(!v.speak("HH AH0 L OW1", s)); }},
+        {"speak range", [](Voice& v, float x) { Speech s; s.range = x; CHECK(!v.speak("HH AH0 L OW1", s)); }},
+        {"speak speed", [](Voice& v, float x) { Speech s; s.speed = x; CHECK(!v.speak("HH AH0 L OW1", s)); }},
+        {"speak breath", [](Voice& v, float x) { Speech s; s.breath = x; CHECK(!v.speak("HH AH0 L OW1", s)); }},
+    };
+    const float bad[] = {std::nanf(""), INFINITY, -INFINITY};
+    const int lead = 11025, after = 11025;
+    for (const Call& c : calls)
+        for (float x : bad) {
+            Voice v(22, 3), twin(22, 3);
+            std::vector<float> a(lead + after), b(lead + after), note(22050);
+            for (Voice* w : {&v, &twin}) w->noteOn(50.0f, 0.8f);
+            v.render(a.data(), lead);
+            twin.render(b.data(), lead);
+            c.call(v, x);
+            v.render(a.data() + lead, after);
+            twin.render(b.data() + lead, after);
+            const BodyState s = v.state();
+            const float read[] = {s.breath, s.glottis, s.tenseness, s.tonguePos, s.tongueHeight, s.lips, s.velum,
+                                  s.slotPlace[0], s.slotPlace[1], s.slotDegree[0], s.slotDegree[1], s.midi, s.f0,
+                                  s.vibrato, s.voicing, s.hiss, s.pressure, s.whistle, s.whistleHz};
+            bool finite = true;
+            for (float y : a) if (!std::isfinite(y)) finite = false;
+            for (float y : read) if (!std::isfinite(y)) finite = false;
+            CHECK_MSG(finite, "%s(%g): not finite", c.name, x);
+            CHECK_MSG(std::memcmp(a.data(), b.data(), a.size() * sizeof(float)) == 0, "%s(%g): set something", c.name, x);
+            v.noteOn(57.0f, 0.8f);
+            v.render(note.data(), (int)note.size());
+            for (float y : note) if (!std::isfinite(y)) finite = false;
+            CHECK_MSG(finite && rms(note.data() + 11025, 11025) > 1e-3, "%s(%g): no note after it", c.name, x);
+        }
+    for (float x : bad) CHECK(Voice(22, 1, x).sampleRate() == kDefaultFs);
+}

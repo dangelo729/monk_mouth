@@ -81,6 +81,7 @@ public:
     // size is in sections, whole or not: 22 = 17.5 cm (adult male), 19 ~ 15 cm, 16 ~ 12.7 cm, anything from 2 to 64.
     explicit Voice(float sections = kDefaultSections, uint32_t seed = 1, float sampleRate = kDefaultFs);
 
+    // a number that is not finite (NaN, an infinity) sets nothing; a word call given one returns false
     // lungs + larynx
     void setBreath(float p01);              // the loudness axis; 0 = silent
     void setPitch(float midi);

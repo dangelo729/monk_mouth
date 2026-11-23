@@ -40,10 +40,10 @@ then NaN until the voice is rebuilt:
 | `burstHalfLife` | at least 0 | a click grows instead of dying |
 | `breathPressure` | at least 0 | the jet's speed is the root of a negative pressure |
 
-A NaN in any field falls back to its default, and `setTenseness` floors at 0
-(the voicing gain is a root of it). A rate of 0 or less is a jump. With all of
-these at their limits at once the voice stays finite, and sings again when
-handed the defaults.
+A NaN or an infinity in any field falls back to its default, and
+`setTenseness` floors at 0 (the voicing gain is a root of it). A rate of 0 or
+less is a jump. With all of these at their limits at once the voice stays
+finite, and sings again when handed the defaults.
 
 ## Fields with behaviours of their own
 

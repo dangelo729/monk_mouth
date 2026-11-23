@@ -15,8 +15,8 @@
 // most fields have no limit: a value that sounds broken is the caller's to
 // find. clamped() holds only the few where a value past the line does not
 // sound bad but ends the voice — a noise band that is no longer a filter, a
-// pipe that gains energy, a click that grows — and turns a NaN, which would
-// end it too, back into the field's default.
+// pipe that gains energy, a click that grows — and turns a NaN or an
+// infinity, which would end it too, back into the field's default.
 #pragma once
 
 namespace mm {
@@ -76,8 +76,8 @@ struct Tuning {
     float jetGain           = 0.1f;     // ms, how hard the jet amplifies a nudge: the lock threshold and the drive
 };
 
-// the few fields that have a limit, held inside it; a NaN falls back to the
-// field's default. fs bounds the two noise bands at half the sample rate.
+// the few fields that have a limit, held inside it; a NaN or an infinity falls
+// back to the field's default. fs bounds the two noise bands at half the sample rate.
 Tuning clamped(const Tuning& t, float fs);
 
 }  // namespace mm

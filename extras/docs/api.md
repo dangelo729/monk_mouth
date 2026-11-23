@@ -61,6 +61,10 @@ score write the same targets, and the last writer wins, per channel, in the
 caller's own order: a setter called before `sing()` loses to the score's first
 events, one called after wins, even if all of it lands in a single block.
 
+A number that is not finite (a NaN, an infinity) is ignored: the call sets
+nothing (a `Tuning` field takes its default), and `sing()` or `speak()`
+returns `false`.
+
 `setGlottis(0)` and `setVelum(0)` mean this voice's rest: shut, unless its
 tuning rests them open (`glottisRest`, `velumRest`).
 

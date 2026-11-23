@@ -8,7 +8,7 @@ namespace mm {
 static float whistleShiftAt(float sections) { return 12.0f * std::log2(sections / (float)kDefaultSections); }
 
 Voice::Voice(float sections, uint32_t seed, float sampleRate)
-    : fs_(sampleRate > 1000.0f ? sampleRate : kDefaultFs), tube_(sections) {
+    : fs_(std::isfinite(sampleRate) && sampleRate > 1000.0f ? sampleRate : kDefaultFs), tube_(sections) {
     rng_.seed(seed);
     glottis_.init(fs_);
     jet_.init(fs_);
@@ -23,8 +23,11 @@ Voice::Voice(float sections, uint32_t seed, float sampleRate)
 }
 
 // ---- the setters: every call sets a target -----------------------------------------------------
+// a number that is not finite sets nothing: write() drops it, and a call that
+// clamps it, keeps it or writes more than once checks it first.
 
 void Voice::write(uint8_t ch, float a, float b) {
+    if (!std::isfinite(a) || !std::isfinite(b)) return;
     pending_.a[ch] = a;
     pending_.b[ch] = b;
     pending_.seq[ch] = ++seq_;
@@ -32,17 +35,26 @@ void Voice::write(uint8_t ch, float a, float b) {
 }
 
 void Voice::setBreath(float p01) {
+    if (!std::isfinite(p01)) return;
     if (p01 > 0.0f) scoreBreath_ = p01;
     write(kChBreath, p01);
 }
-void Voice::setPitch(float midi)            { midi_ = midi; write(kChPitch, midi); }
+void Voice::setPitch(float midi) {
+    if (!std::isfinite(midi)) return;
+    midi_ = midi;
+    write(kChPitch, midi);
+}
 void Voice::setGlottis(float open01)        { write(kChGlottis, open01); }
 void Voice::setTenseness(float t01)         { write(kChTenseness, t01); }
 void Voice::setTongue(float pos01, float height01) {
+    if (!std::isfinite(pos01) || !std::isfinite(height01)) return;
     write(kChTongue, lerpf(kTongueXMin, kTongueXMax, clampf(pos01, 0.0f, 1.0f)),
                      lerpf(kTongueDMax, kTongueDMin, clampf(height01, 0.0f, 1.0f)));
 }
-void Voice::setLips(float aperture01)       { write(kChLips, kLipDMax * clampf(aperture01, 0.0f, 1.0f)); }
+void Voice::setLips(float aperture01) {
+    if (!std::isfinite(aperture01)) return;
+    write(kChLips, kLipDMax * clampf(aperture01, 0.0f, 1.0f));
+}
 // the table's pose in its own units, the lips as a sung vowel's: the tuning's
 // lipRound reshapes them. a diphthong poses its first half; a phone that is
 // not a vowel sets nothing.
@@ -54,7 +66,7 @@ void Voice::setVowel(uint8_t phone) {
 }
 void Voice::setVelum(float open01)          { write(kChVelum, open01); }
 void Voice::setConstriction(int slot, float place01, float degree) {
-    if (slot < 0 || slot > 1) return;
+    if (slot < 0 || slot > 1 || !std::isfinite(place01)) return;
     write((uint8_t)(kChSlot0 + slot), clampf(place01, 0.0f, 1.0f), degree);
 }
 void Voice::clearConstriction(int slot) {
@@ -63,6 +75,7 @@ void Voice::clearConstriction(int slot) {
 }
 void Voice::setGlide(float perSec)          { write(kChGlide, perSec); }
 void Voice::setVibrato(float rateHz, float cents, float onsetSec) {
+    if (!std::isfinite(rateHz) || !std::isfinite(cents) || !std::isfinite(onsetSec)) return;
     write(kChVibrato, rateHz, cents);
     write(kChVibratoOnset, onsetSec);
 }
@@ -74,12 +87,14 @@ void Voice::setTuning(const Tuning& t) {
 }
 
 void Voice::setSections(float sections) {
+    if (!std::isfinite(sections)) return;
     sections_ = layoutFor(sections).length;
     sectionsPending_ = true;
     whistleShift_ = whistleShiftAt(sections_);
 }
 
 void Voice::noteOn(float midi, float vel01) {
+    if (!std::isfinite(midi) || !std::isfinite(vel01)) return;
     setPitch(midi);
     setBreath(vel01);
     write(kChNoteOn, 0.0f);
@@ -93,6 +108,7 @@ void Voice::noteOff() { write(kChBreath, 0.0f); }
 // playing is abandoned and the phoneme readback cleared, written first so it
 // lands ahead of the whistle's own targets.
 void Voice::whistle(float midi, float breath) {
+    if (!std::isfinite(midi) || !std::isfinite(breath)) return;
     player_.withdraw();
     write(kChAbandon, 0.0f);
     const float lo = (float)kWhistleMidiLo, hi = (float)(kWhistleMidiLo + kWhistleCount - 1);
@@ -124,6 +140,9 @@ void Voice::whistleRange(float& lo, float& hi) const {
 bool Voice::sing(const Syllable* syls, int n) { return sing(syls, n, scoreBreath_); }
 
 bool Voice::sing(const Syllable* syls, int n, float breath) {
+    if (!std::isfinite(breath)) return false;
+    for (int i = 0; syls && i < n; ++i)
+        if (!std::isfinite(syls[i].midi)) return false;
     Event scratch[kMaxEvents];
     ScoreOptions opt;
     opt.fs = fs_;
@@ -152,6 +171,7 @@ bool Voice::speak(const char* phones) { return speak(phones, Speech()); }
 // the baseline and the breath default to the voice's own: the note held, the
 // level say() would use. the voice's vibrato and glide stay as they were set.
 bool Voice::speak(const char* phones, const Speech& s) {
+    if (!std::isfinite(s.midi) || !std::isfinite(s.range) || !std::isfinite(s.speed) || !std::isfinite(s.breath)) return false;
     Event scratch[kMaxEvents];
     Speech sp = s;
     if (!(sp.midi > 0.0f)) sp.midi = midi_;

@@ -9,14 +9,14 @@ namespace {
 // a band's q divides its coefficients: at zero and below the filter is not one
 constexpr float kMinQ = 1e-6f;
 
-inline float real(float x, float fallback) { return x == x ? x : fallback; }       // NaN
-inline float lim(float x, float lo, float hi, float fallback) { return x == x ? clampf(x, lo, hi) : fallback; }
-inline float atLeast(float x, float lo, float fallback) { return x == x ? (x < lo ? lo : x) : fallback; }
+inline float real(float x, float fallback) { return std::isfinite(x) ? x : fallback; }       // NaN, infinity
+inline float lim(float x, float lo, float hi, float fallback) { return std::isfinite(x) ? clampf(x, lo, hi) : fallback; }
+inline float atLeast(float x, float lo, float fallback) { return std::isfinite(x) ? (x < lo ? lo : x) : fallback; }
 
 }  // namespace
 
 Tuning clamped(const Tuning& in, float fs) {
-    const Tuning d;                                       // the defaults: what a NaN falls back to
+    const Tuning d;                                       // the defaults: what a NaN or an infinity falls back to
     const float nyquist = fs * 0.5f;
     Tuning t;
 
